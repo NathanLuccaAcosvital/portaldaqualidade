@@ -1,5 +1,5 @@
 import React, { ErrorInfo, ReactNode } from 'react';
-import { AlertOctagon, RefreshCw, Home } from 'lucide-react';
+import { AlertOctagon, RefreshCw } from 'lucide-react';
 
 interface Props {
   children?: ReactNode;
@@ -14,11 +14,15 @@ interface State {
  * Boundary de Erros do Sistema (S)
  * Única responsabilidade: Capturar exceções não tratadas e fornecer fallback seguro.
  */
-// Fix: Explicitly extending React.Component with generic types to ensure 'state', 'props', and 'setState' are correctly inherited and visible to TypeScript
+// Fix: Using React.Component directly with explicit generic types to ensure that state, props, and setState are correctly inherited and recognized by the TypeScript compiler
 export class ErrorBoundary extends React.Component<Props, State> {
+  // Fix: Explicitly defining the state property on the class to ensure it's recognized by the compiler and correctly typed
+  public state: State = {
+    hasError: false
+  };
+
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false };
   }
 
   public static getDerivedStateFromError(error: Error): State {
@@ -31,11 +35,13 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   private handleReset = () => {
+    // Fix: setState is now correctly recognized as a member of React.Component
     this.setState({ hasError: false });
     window.location.reload();
   };
 
   public render(): ReactNode {
+    // Fix: state and props are correctly accessed as members inherited from React.Component
     if (!this.state.hasError) return this.props.children;
 
     return (

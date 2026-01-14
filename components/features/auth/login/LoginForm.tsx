@@ -22,7 +22,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, isLoading, error
         <h2 className="text-xl sm:text-2xl xl:text-2xl 2xl:text-4xl font-black text-[#081437] tracking-tighter leading-none">
           {t('login.title')}
         </h2>
-        <p className="text-slate-400 text-[9px] sm:text-xs xl:text-[10px] 2xl:text-sm font-bold uppercase tracking-wider">
+        <p className="text-slate-800 text-[9px] sm:text-xs xl:text-[10px] 2xl:text-sm font-bold uppercase tracking-wider">
           {t('login.enterCredentials')}
         </p>
       </header>
@@ -30,16 +30,18 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, isLoading, error
       <form onSubmit={(e) => onSubmit(e, email, password)} className="space-y-4 xl:space-y-4 2xl:space-y-8">
         <div className="space-y-3 xl:space-y-3">
           <div className="space-y-1">
-            <label className="text-[7px] sm:text-[8px] xl:text-[8px] 2xl:text-[10px] font-black uppercase tracking-[1.5px] text-slate-400 ml-1">
+            <label htmlFor="login-email" className="text-[7px] sm:text-[8px] xl:text-[8px] 2xl:text-[10px] font-black uppercase tracking-[1.5px] text-slate-700 ml-1">
               {t('login.corpEmail')}
             </label>
-            <div className={`flex items-center bg-slate-50/70 border-[1.5px] rounded-xl overflow-hidden transition-all duration-300 ${focusedInput === 'email' ? 'border-blue-400 bg-white ring-4 ring-blue-50' : 'border-slate-100'}`}>
-              <div className={`w-10 xl:w-11 2xl:w-14 h-10 xl:h-11 2xl:h-14 flex items-center justify-center border-r transition-colors ${focusedInput === 'email' ? 'text-blue-500 border-slate-100' : 'text-slate-300 border-slate-50'}`}>
-                <Mail size={16} />
+            <div className={`flex items-center bg-slate-50/70 border-[1.5px] rounded-xl overflow-hidden transition-all duration-300 ${focusedInput === 'email' ? 'border-blue-500 bg-white ring-4 ring-blue-50' : 'border-slate-300'}`}>
+              <div className={`w-10 xl:w-11 2xl:w-14 h-10 xl:h-11 2xl:h-14 flex items-center justify-center border-r transition-colors ${focusedInput === 'email' ? 'text-blue-600 border-slate-100' : 'text-slate-500 border-slate-100'}`}>
+                <Mail size={16} aria-hidden="true" />
               </div>
               <input 
+                id="login-email"
                 type="email" required 
-                className="flex-1 px-3 xl:px-4 py-2 xl:py-2.5 2xl:py-4 bg-transparent outline-none text-[11px] xl:text-[12px] 2xl:text-sm font-bold text-[#081437] placeholder-slate-300"
+                autoComplete="email"
+                className="flex-1 px-3 xl:px-4 py-2 xl:py-2.5 2xl:py-4 bg-transparent outline-none text-[11px] xl:text-[12px] 2xl:text-sm font-bold text-[#081437] placeholder-slate-500"
                 placeholder="usuario@acosvital.com"
                 onFocus={() => setFocusedInput('email')}
                 onBlur={() => setFocusedInput(null)}
@@ -51,27 +53,34 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, isLoading, error
 
           <div className="space-y-1">
             <div className="flex justify-between items-end px-1">
-              <label className="text-[7px] sm:text-[8px] xl:text-[8px] 2xl:text-[10px] font-black uppercase tracking-[1.5px] text-slate-400">
+              <label htmlFor="login-password" className="text-[7px] sm:text-[8px] xl:text-[8px] 2xl:text-[10px] font-black uppercase tracking-[1.5px] text-slate-700">
                 {t('login.accessPassword')}
               </label>
               <button type="button" className="text-[6px] sm:text-[7px] xl:text-[8px] 2xl:text-[9px] font-black text-[#B23C0E] hover:underline uppercase tracking-widest">
                 {t('login.forgotPassword')}
               </button>
             </div>
-            <div className={`flex items-center bg-slate-50/70 border-[1.5px] rounded-xl overflow-hidden transition-all duration-300 ${focusedInput === 'password' ? 'border-blue-400 bg-white ring-4 ring-blue-50' : 'border-slate-100'}`}>
-              <div className={`w-10 xl:w-11 2xl:w-14 h-10 xl:h-11 2xl:h-14 flex items-center justify-center border-r transition-colors ${focusedInput === 'password' ? 'text-blue-500 border-slate-100' : 'text-slate-300 border-slate-50'}`}>
-                <Lock size={16} />
+            <div className={`flex items-center bg-slate-50/70 border-[1.5px] rounded-xl overflow-hidden transition-all duration-300 ${focusedInput === 'password' ? 'border-blue-500 bg-white ring-4 ring-blue-50' : 'border-slate-300'}`}>
+              <div className={`w-10 xl:w-11 2xl:w-14 h-10 xl:h-11 2xl:h-14 flex items-center justify-center border-r transition-colors ${focusedInput === 'password' ? 'text-blue-600 border-slate-100' : 'text-slate-500 border-slate-100'}`}>
+                <Lock size={16} aria-hidden="true" />
               </div>
               <input 
+                id="login-password"
                 type={showPassword ? "text" : "password"} required 
-                className="flex-1 px-3 xl:px-4 py-2 xl:py-2.5 2xl:py-4 bg-transparent outline-none text-[11px] xl:text-[12px] 2xl:text-sm font-bold text-[#081437] placeholder-slate-300 tracking-wider"
+                autoComplete="current-password"
+                className="flex-1 px-3 xl:px-4 py-2 xl:py-2.5 2xl:py-4 bg-transparent outline-none text-[11px] xl:text-[12px] 2xl:text-sm font-bold text-[#081437] placeholder-slate-500 tracking-wider"
                 placeholder="••••••••"
                 onFocus={() => setFocusedInput('password')}
                 onBlur={() => setFocusedInput(null)}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
               />
-              <button type="button" onClick={() => setShowPassword(!showPassword)} className="w-10 xl:w-11 2xl:w-14 flex items-center justify-center text-slate-300 hover:text-[#081437] transition-colors">
+              <button 
+                type="button" 
+                onClick={() => setShowPassword(!showPassword)} 
+                className="w-10 xl:w-11 2xl:w-14 flex items-center justify-center text-slate-500 hover:text-[#081437] transition-colors"
+                aria-label={showPassword ? t('common.hidePassword') : t('common.showPassword')}
+              >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
@@ -79,7 +88,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, isLoading, error
         </div>
 
         {error && (
-          <div className="p-2 xl:p-2.5 bg-red-50 text-red-600 text-[9px] xl:text-[9px] font-bold rounded-xl border border-red-100 flex items-center gap-2 animate-shake">
+          <div className="p-2 xl:p-2.5 bg-red-50 text-red-800 text-[9px] xl:text-[9px] font-bold rounded-xl border border-red-200 flex items-center gap-2 animate-shake">
             <AlertOctagon size={14} className="shrink-0" /> {error}
           </div>
         )}
@@ -87,6 +96,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, isLoading, error
         <button 
           type="submit" disabled={isLoading}
           className="w-full bg-[#081437] hover:bg-[#0c1c4d] text-white font-bold h-10 xl:h-11 2xl:h-16 rounded-xl transition-all flex items-center justify-center gap-3 shadow-lg active:scale-[0.98] disabled:opacity-70 group"
+          aria-label={t('login.authenticateAccess')}
         >
           {isLoading ? <Loader2 size={18} className="animate-spin" /> : (
             <>

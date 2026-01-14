@@ -55,11 +55,11 @@ const ClientLoginPage: React.FC = () => {
               error={error}
             />
 
-            <footer className="text-center pt-6 border-t border-slate-50 space-y-3">
-               <p className="text-[8px] sm:text-[9px] font-black text-slate-300 uppercase tracking-widest leading-relaxed">
+            <footer className="text-center pt-6 border-t border-slate-100 space-y-3">
+               <p className="text-[8px] sm:text-[9px] font-black text-slate-600 uppercase tracking-wide leading-relaxed">
                   MODO DE ACESSO EXCLUSIVO PARA CLIENTES E ANALISTAS.
                </p>
-               <p className="text-[9px] sm:text-[10px] font-black text-[#081437] uppercase tracking-[3px] opacity-40">
+               <p className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-[3px]">
                   © 2026 AÇOS VITAL
                </p>
             </footer>
@@ -67,7 +67,7 @@ const ClientLoginPage: React.FC = () => {
         </div>
 
         {/* Rodapé Mobile/Tablet (Visível apenas quando Hero está oculto) */}
-        <div className="mt-12 flex lg:hidden items-center justify-center gap-8 text-[9px] text-slate-400 font-black uppercase tracking-[4px] animate-in fade-in duration-1000 delay-500">
+        <div className="mt-12 flex lg:hidden items-center justify-center gap-8 text-[9px] text-slate-600 font-black uppercase tracking-[4px] animate-in fade-in duration-1000 delay-500">
             <div className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
                 <span>{t('login.monitoring')}</span>
