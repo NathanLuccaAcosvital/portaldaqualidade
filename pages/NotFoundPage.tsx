@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldAlert, ArrowLeft } from 'lucide-react';
+import { ShieldAlert, Home } from 'lucide-react';
 
 const NotFoundPage: React.FC = () => {
   const navigate = useNavigate();
@@ -17,14 +17,14 @@ const NotFoundPage: React.FC = () => {
         <div className="space-y-2">
             <h1 className="text-6xl font-black text-slate-900 tracking-tighter">404</h1>
             <h2 className="text-xl font-bold text-slate-800">Recurso não localizado</h2>
-            <p className="text-slate-500 text-sm leading-relaxed">O caminho solicitado não existe ou você não possui as permissões necessárias para acessá-lo.</p>
+            <p className="text-slate-500 text-sm leading-relaxed">O caminho solicitado não existe ou foi movido. Certifique-se de que o endereço está correto.</p>
         </div>
         
         <button 
-          onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-2 text-blue-600 font-bold hover:gap-3 transition-all uppercase text-[11px] tracking-widest"
+          onClick={() => navigate('/')}
+          className="inline-flex items-center gap-2 bg-[#081437] text-white px-8 py-4 rounded-2xl font-black hover:bg-blue-900 transition-all shadow-xl active:scale-95 uppercase text-[11px] tracking-widest w-full justify-center"
         >
-          <ArrowLeft size={18} /> Retornar ao porto seguro
+          <Home size={18} /> Retornar à Página Inicial
         </button>
       </div>
     </div>

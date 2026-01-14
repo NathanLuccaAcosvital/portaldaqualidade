@@ -51,6 +51,7 @@ export const SupabaseUserService: IUserService = {
   },
 
   signUp: async (email, password, fullName, organizationId, department, role = UserRole.QUALITY) => {
+    // 1. Auth SignUp (Supabase Auth)
     const { data, error: authError } = await supabase.auth.signUp({ 
       email: email.trim().toLowerCase(), 
       password 
@@ -58,8 +59,9 @@ export const SupabaseUserService: IUserService = {
     
     if (authError) throw authError;
 
+    // 2. Profile Creation (Public Profiles Table)
     if (data.user) {
-      await supabase.from('profiles').upsert({
+      const { error: profileError } = await supabase.from('profiles').upsert({
         id: data.user.id,
         full_name: fullName.trim(),
         email: email.trim().toLowerCase(),
@@ -68,6 +70,11 @@ export const SupabaseUserService: IUserService = {
         role: role,
         status: 'ACTIVE'
       });
+
+      if (profileError) {
+        console.error("Erro ao criar perfil:", profileError);
+        throw new Error("Usuário criado, mas houve um erro ao configurar o perfil.");
+      }
     }
   },
 
