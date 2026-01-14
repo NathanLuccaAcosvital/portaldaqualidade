@@ -50,7 +50,7 @@ const ClientLoginPage: React.FC = () => {
     <div className="h-screen w-full flex bg-white relative selection:bg-blue-100 overflow-hidden font-sans">
       <CookieBanner />
 
-      {/* Lado Esquerdo: Identidade Visual Industrial */}
+      {/* Lado Esquerdo: Identidade Visual Industrial (Desktop) */}
       <aside className="hidden lg:flex lg:w-[50%] xl:w-[55%] relative overflow-hidden bg-[#081437] h-full shrink-0">
         <div 
           className="absolute inset-0 bg-cover bg-center opacity-40 mix-blend-luminosity scale-110 animate-slow-zoom" 
@@ -89,7 +89,7 @@ const ClientLoginPage: React.FC = () => {
             </div>
           </div>
 
-          {/* RODAPÉ LATERAL */}
+          {/* RODAPÉ LATERAL (Removido copyright conforme solicitado) */}
           <div className="text-[10px] xl:text-[11px] text-slate-400 font-black flex items-center justify-start gap-12 uppercase tracking-[4px] xl:tracking-[6px]">
               <div className="flex items-center gap-3">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></span>
@@ -98,14 +98,11 @@ const ClientLoginPage: React.FC = () => {
               <div className="hover:text-white cursor-pointer transition-colors">
                 {t('common.privacy')}
               </div>
-              <div className="opacity-80">
-                © 2026 {t('menu.brand').toUpperCase()}
-              </div>
           </div>
         </div>
       </aside>
 
-      {/* Lado Direito: Formulário Compacto */}
+      {/* Lado Direito: Formulário Compacto e Responsivo */}
       <main className="w-full lg:flex-1 h-full flex flex-col items-center justify-center p-4 sm:p-8 bg-white relative overflow-hidden">
         
         {/* Barra Superior de Idiomas */}
@@ -130,12 +127,12 @@ const ClientLoginPage: React.FC = () => {
             </div>
         </div>
 
-        {/* Container do Card - Reduzido max-w e paddings para ser mais compacto */}
-        <div className="w-full max-w-[340px] sm:max-w-[380px] xl:max-w-[440px] flex flex-col p-1 bg-gradient-to-br from-blue-100/30 to-blue-50/10 rounded-[2rem] animate-in zoom-in-95 duration-700">
-          <div className="bg-white rounded-[1.8rem] p-5 sm:p-8 xl:p-10 space-y-4 sm:space-y-6 xl:space-y-8 shadow-sm border border-blue-50/30 overflow-y-auto custom-scrollbar">
-            <header className="space-y-1 xl:space-y-3">
-              <h2 className="text-2xl sm:text-3xl xl:text-4xl font-bold text-[#081437] tracking-tighter leading-none">{t('login.title')}</h2>
-              <p className="text-slate-400 text-[10px] sm:text-xs xl:text-sm font-medium leading-relaxed">
+        {/* Container do Card - Ultra Responsivo */}
+        <div className="w-full max-w-[320px] xs:max-w-[340px] sm:max-w-[380px] xl:max-w-[440px] flex flex-col p-0.5 bg-gradient-to-br from-blue-100/30 to-blue-50/10 rounded-[2rem] animate-in zoom-in-95 duration-700">
+          <div className="bg-white rounded-[1.8rem] p-4 xs:p-6 sm:p-8 xl:p-10 space-y-4 xs:space-y-6 xl:space-y-8 shadow-sm border border-blue-50/30 overflow-y-auto custom-scrollbar">
+            <header className="space-y-1 sm:space-y-2 xl:space-y-3">
+              <h2 className="text-xl xs:text-2xl sm:text-3xl xl:text-4xl font-bold text-[#081437] tracking-tighter leading-none">{t('login.title')}</h2>
+              <p className="text-slate-400 text-[9px] xs:text-[10px] sm:text-xs xl:text-sm font-medium leading-relaxed">
                 {t('login.enterCredentials')}
               </p>
             </header>
@@ -143,16 +140,16 @@ const ClientLoginPage: React.FC = () => {
             <form onSubmit={handleLogin} className="space-y-4 sm:space-y-5 xl:space-y-6">
               <div className="space-y-3 sm:space-y-4">
                  <div className="space-y-1">
-                    <label className="text-[8px] sm:text-[9px] font-black uppercase tracking-[1.5px] text-slate-400 ml-1">
+                    <label className="text-[7px] xs:text-[8px] sm:text-[9px] font-black uppercase tracking-[1.5px] text-slate-400 ml-1">
                       {t('login.corpEmail')}
                     </label>
                     <div className={`flex items-center bg-slate-50/70 border-[1.5px] rounded-xl overflow-hidden transition-all duration-300 ${focusedInput === 'email' ? 'border-blue-400 bg-white ring-4 ring-blue-50' : 'border-slate-100'}`}>
-                       <div className={`w-9 sm:w-10 xl:w-12 h-10 sm:h-11 xl:h-14 flex items-center justify-center border-r transition-colors ${focusedInput === 'email' ? 'text-blue-500 border-slate-100' : 'text-slate-300 border-slate-50'}`}>
+                       <div className={`w-8 sm:w-10 xl:w-12 h-9 sm:h-11 xl:h-14 flex items-center justify-center border-r transition-colors ${focusedInput === 'email' ? 'text-blue-500 border-slate-100' : 'text-slate-300 border-slate-50'}`}>
                           <Mail size={14} className="sm:size-4" />
                        </div>
                        <input 
                           type="email" required 
-                          className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 xl:py-3 bg-transparent outline-none text-[11px] sm:text-xs xl:text-sm font-semibold text-[#081437] placeholder-slate-300"
+                          className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 xl:py-3 bg-transparent outline-none text-[10px] xs:text-[11px] sm:text-xs xl:text-sm font-semibold text-[#081437] placeholder-slate-300"
                           placeholder="usuario@acosvital.com"
                           onFocus={() => setFocusedInput('email')}
                           onBlur={() => setFocusedInput(null)}
@@ -164,27 +161,27 @@ const ClientLoginPage: React.FC = () => {
 
                  <div className="space-y-1">
                     <div className="flex justify-between items-end px-1">
-                       <label className="text-[8px] sm:text-[9px] font-black uppercase tracking-[1.5px] text-slate-400">
+                       <label className="text-[7px] xs:text-[8px] sm:text-[9px] font-black uppercase tracking-[1.5px] text-slate-400">
                          {t('login.accessPassword')}
                        </label>
-                       <button type="button" className="text-[7px] sm:text-[8px] font-black text-[#B23C0E] hover:underline uppercase tracking-widest">
+                       <button type="button" className="text-[6px] xs:text-[7px] sm:text-[8px] font-black text-[#B23C0E] hover:underline uppercase tracking-widest">
                          {t('login.forgotPassword')}
                        </button>
                     </div>
                     <div className={`flex items-center bg-slate-50/70 border-[1.5px] rounded-xl overflow-hidden transition-all duration-300 ${focusedInput === 'password' ? 'border-blue-400 bg-white ring-4 ring-blue-50' : 'border-slate-100'}`}>
-                       <div className={`w-9 sm:w-10 xl:w-12 h-10 sm:h-11 xl:h-14 flex items-center justify-center border-r transition-colors ${focusedInput === 'password' ? 'text-blue-500 border-slate-100' : 'text-slate-300 border-slate-50'}`}>
+                       <div className={`w-8 sm:w-10 xl:w-12 h-9 sm:h-11 xl:h-14 flex items-center justify-center border-r transition-colors ${focusedInput === 'password' ? 'text-blue-500 border-slate-100' : 'text-slate-300 border-slate-50'}`}>
                           <Lock size={14} className="sm:size-4" />
                        </div>
                        <input 
                           type={showPassword ? "text" : "password"} required 
-                          className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 xl:py-3 bg-transparent outline-none text-[11px] sm:text-xs xl:text-sm font-semibold text-[#081437] placeholder-slate-300 tracking-wider"
+                          className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 xl:py-3 bg-transparent outline-none text-[10px] xs:text-[11px] sm:text-xs xl:text-sm font-semibold text-[#081437] placeholder-slate-300 tracking-wider"
                           placeholder="••••••••••••"
                           onFocus={() => setFocusedInput('password')}
                           onBlur={() => setFocusedInput(null)}
                           value={credentials.password}
                           onChange={e => setCredentials({...credentials, password: e.target.value})}
                        />
-                       <button type="button" onClick={() => setShowPassword(!showPassword)} className="w-9 sm:w-10 xl:w-12 h-10 sm:h-11 xl:h-14 flex items-center justify-center text-slate-300 hover:text-[#081437] transition-colors">
+                       <button type="button" onClick={() => setShowPassword(!showPassword)} className="w-8 sm:w-10 xl:w-12 h-9 sm:h-11 xl:h-14 flex items-center justify-center text-slate-300 hover:text-[#081437] transition-colors">
                           {showPassword ? <EyeOff size={14} className="sm:size-4" /> : <Eye size={14} className="sm:size-4" />}
                        </button>
                     </div>
@@ -210,15 +207,26 @@ const ClientLoginPage: React.FC = () => {
               </button>
             </form>
 
-            <footer className="text-center pt-3 sm:pt-5 xl:pt-6 border-t border-slate-50 space-y-1.5 sm:space-y-2">
-               <p className="text-[7px] sm:text-[9px] font-black text-slate-300 uppercase tracking-widest leading-relaxed">
+            <footer className="text-center pt-3 sm:pt-5 xl:pt-6 border-t border-slate-50 space-y-2">
+               <p className="text-[7px] xs:text-[8px] sm:text-[9px] font-black text-slate-300 uppercase tracking-widest leading-relaxed">
                   MODO DE ACESSO EXCLUSIVO PARA CLIENTES E ANALISTAS.
                </p>
-               <p className="text-[8px] sm:text-[10px] font-black text-[#081437] uppercase tracking-[2px] opacity-60">
+               <p className="text-[8px] xs:text-[9px] sm:text-[10px] font-black text-[#081437] uppercase tracking-[2px] opacity-60">
                   © 2026 AÇOS VITAL
                </p>
             </footer>
           </div>
+        </div>
+
+        {/* Rodapé Mobile (Apenas visível em telas pequenas < lg) */}
+        <div className="mt-8 flex lg:hidden items-center justify-center gap-6 sm:gap-10 text-[8px] xs:text-[9px] text-slate-400 font-black uppercase tracking-[3px] sm:tracking-[4px] animate-in fade-in duration-1000 delay-500">
+            <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
+                <span>{t('login.monitoring')}</span>
+            </div>
+            <div className="hover:text-blue-600 cursor-pointer transition-colors">
+                {t('common.privacy')}
+            </div>
         </div>
       </main>
       
@@ -247,6 +255,9 @@ const ClientLoginPage: React.FC = () => {
         .custom-scrollbar::-webkit-scrollbar-thumb {
           background: #e2e8f0;
           border-radius: 10px;
+        }
+        @media (max-width: 340px) {
+          .xs\:max-w-\[340px\] { max-width: 290px; }
         }
       `}</style>
     </div>
