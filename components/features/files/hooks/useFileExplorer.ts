@@ -1,10 +1,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../../../context/authContext.tsx';
-import { fileService } from '../../../lib/services/index.ts';
-import { useToast } from '../../../context/notificationContext.tsx';
+import { useAuth } from '../../../../context/authContext.tsx';
+import { fileService } from '../../../../lib/services/index.ts';
+import { useToast } from '../../../../context/notificationContext.tsx';
 import { useTranslation } from 'react-i18next';
-import { FileNode } from '../../../types/index.ts';
+import { FileNode } from '../../../../types/index.ts';
 
 interface FileExplorerOptions {
   currentFolderId?: string | null;
