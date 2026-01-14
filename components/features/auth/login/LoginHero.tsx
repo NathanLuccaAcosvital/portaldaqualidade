@@ -57,10 +57,12 @@ export const LoginHero: React.FC = () => {
           </button>
       </div>
       
-      {/* Background Decor */}
-      <div 
-        className="absolute inset-0 -z-10 bg-cover bg-center opacity-40 mix-blend-luminosity scale-110 animate-slow-zoom" 
-        style={{ backgroundImage: `url("${BACKGROUND_URL}")` }} 
+      {/* Background Decor: Optimizado para LCP usando <img> em vez de CSS background */}
+      <img 
+        src={BACKGROUND_URL}
+        alt=""
+        fetchPriority="high"
+        className="absolute inset-0 -z-10 w-full h-full object-cover opacity-40 mix-blend-luminosity scale-110 animate-slow-zoom pointer-events-none"
       />
       <div className="absolute inset-0 -z-10 bg-gradient-to-tr from-[#081437] via-[#081437]/90 to-transparent" />
     </div>
