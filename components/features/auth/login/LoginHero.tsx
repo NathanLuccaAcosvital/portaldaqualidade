@@ -1,0 +1,62 @@
+
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { CheckCircle2, ShieldCheck } from 'lucide-react';
+
+const LOGO_URL = "https://wtydnzqianhahiiasows.supabase.co/storage/v1/object/public/public_assets/hero/logo.png";
+const BACKGROUND_URL = "https://wtydnzqianhahiiasows.supabase.co/storage/v1/object/public/public_assets/hero/header_login.webp";
+
+export const LoginHero: React.FC = () => {
+  const { t } = useTranslation();
+
+  return (
+    <div className="relative z-10 flex flex-col justify-between p-10 xl:p-20 w-full h-full text-white">
+      <div className="animate-in fade-in slide-in-from-left-6 duration-1000">
+        <img src={LOGO_URL} alt="Aços Vital" className="h-10 xl:h-16 object-contain" />
+      </div>
+
+      <div className="space-y-6 xl:space-y-10 animate-in fade-in slide-in-from-bottom-6 duration-1000 delay-300">
+        <div className="space-y-4 xl:space-y-6">
+          <div className="flex items-center gap-4">
+            <div className="h-[1.5px] w-12 bg-[#B23C0E]"></div>
+            <span className="text-[#B23C0E] text-[10px] xl:text-xs font-bold uppercase tracking-[6px]">{t('login.subtitle')}</span>
+          </div>
+          <h1 className="text-3xl lg:text-4xl xl:text-6xl font-bold leading-[1.1] tracking-tighter max-w-xl">
+            {t('login.slogan').split(',')[0]},<br/>
+            <span className="text-[#62A5FA] block mt-2">{t('login.slogan').split(',')[1]}</span>
+          </h1>
+        </div>
+        
+        <p className="text-sm xl:text-lg text-slate-300 font-medium leading-relaxed max-w-lg">
+          {t('login.heroSubtitle')}
+        </p>
+        
+        <div className="flex flex-wrap gap-3 pt-2">
+           <div className="flex items-center gap-3 text-[9px] xl:text-[10px] font-bold uppercase tracking-[2px] text-white bg-white/5 backdrop-blur-md px-4 py-3 xl:px-6 xl:py-4 rounded-xl border border-white/10 shadow-xl transition-transform hover:scale-105">
+              <CheckCircle2 size={14} className="text-[#B23C0E] xl:size-4" /> {t('login.certification')}
+           </div>
+           <div className="flex items-center gap-3 text-[9px] xl:text-[10px] font-bold uppercase tracking-[2px] text-white bg-white/5 backdrop-blur-md px-4 py-3 xl:px-6 xl:py-4 rounded-xl border border-white/10 shadow-xl transition-transform hover:scale-105">
+              <ShieldCheck size={14} className="text-[#B23C0E] xl:size-4" /> {t('login.secureData')}
+           </div>
+        </div>
+      </div>
+
+      <div className="text-[10px] xl:text-[11px] text-slate-400 font-black flex items-center justify-start gap-12 uppercase tracking-[4px] xl:tracking-[6px]">
+          <div className="flex items-center gap-3">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></span>
+            <span>{t('login.monitoring')}</span>
+          </div>
+          <div className="hover:text-white cursor-pointer transition-colors">
+            {t('common.privacy')}
+          </div>
+      </div>
+      
+      {/* Background Decor */}
+      <div 
+        className="absolute inset-0 -z-10 bg-cover bg-center opacity-40 mix-blend-luminosity scale-110 animate-slow-zoom" 
+        style={{ backgroundImage: `url("${BACKGROUND_URL}")` }} 
+      />
+      <div className="absolute inset-0 -z-10 bg-gradient-to-tr from-[#081437] via-[#081437]/80 to-transparent" />
+    </div>
+  );
+};
