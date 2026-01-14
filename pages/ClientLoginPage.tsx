@@ -46,20 +46,21 @@ const ClientLoginPage: React.FC = () => {
           <LanguageSelector />
         </div>
 
-        <div className="w-full max-w-[420px] animate-in zoom-in-95 duration-700">
-          <div className="space-y-12">
+        {/* Formulário Reduzido para 400px (5% menor que 420px) */}
+        <div className="w-full max-w-[400px] animate-in zoom-in-95 duration-700">
+          <div className="space-y-10">
             <LoginForm 
               onSubmit={handleLogin}
               isLoading={isLoading}
               error={error}
             />
 
-            <footer className="pt-10 border-t-2 border-slate-100 flex items-center justify-between">
-               <div className="space-y-1.5">
-                  <p className="text-[11px] font-black text-slate-900 uppercase tracking-[3px]">Aços Vital S.A.</p>
-                  <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Sistemas de Gestão Industrial</p>
+            <footer className="pt-8 border-t border-slate-100 flex items-center justify-between">
+               <div className="space-y-1">
+                  <p className="text-[10px] font-black text-slate-900 uppercase tracking-[2px]">Aços Vital S.A.</p>
+                  <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Sistemas de Gestão Industrial</p>
                </div>
-               <img src="https://wtydnzqianhahiiasows.supabase.co/storage/v1/object/public/public_assets/hero/logo.png" alt="" className="h-6 opacity-40 grayscale" aria-hidden="true" />
+               <img src="https://wtydnzqianhahiiasows.supabase.co/storage/v1/object/public/public_assets/hero/logo.png" alt="" className="h-5 opacity-40 grayscale" aria-hidden="true" />
             </footer>
           </div>
         </div>
