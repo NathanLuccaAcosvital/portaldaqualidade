@@ -1,0 +1,47 @@
+
+import React, { Suspense } from 'react';
+import { HashRouter } from 'react-router-dom';
+import { AuthProvider } from './context/authContext.tsx';
+import { AppRoutes } from './routes.tsx';
+import { ErrorBoundary } from './components/common/ErrorBoundary.tsx';
+import { NotificationProvider } from './context/notificationContext.tsx';
+import { Loader2 } from 'lucide-react';
+import './lib/i18n.ts';
+
+/**
+ * Loader global minimalista para transições de módulo.
+ */
+const GlobalSuspenseFallback = () => (
+  <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#081437]">
+    <Loader2 className="animate-spin text-blue-500 mb-4" size={32} />
+    <p className="text-[10px] font-black text-slate-500 uppercase tracking-[4px]">Injetando Camadas</p>
+  </div>
+);
+
+/**
+ * Composição de Provedores (S)
+ * Isola a árvore de injeção de dependência da lógica de roteamento.
+ */
+const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <ErrorBoundary>
+    <Suspense fallback={<GlobalSuspenseFallback />}>
+      <HashRouter>
+        <NotificationProvider>
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+        </NotificationProvider>
+      </HashRouter>
+    </Suspense>
+  </ErrorBoundary>
+);
+
+const App: React.FC = () => {
+  return (
+    <AppProviders>
+      <AppRoutes />
+    </AppProviders>
+  );
+};
+
+export default App;
