@@ -1,12 +1,16 @@
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient.ts';
 import { userService } from '../lib/services/index.ts';
-import { User } from '../types/index.ts';
+import { User, UserRole, normalizeRole } from '../types/index.ts';
 
-interface AuthContextType {
+interface AuthState {
   user: User | null;
   isLoading: boolean;
+  error: string | null;
+}
+
+interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<User | null>;
@@ -14,51 +18,63 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/**
+ * AuthProvider Remasterizado
+ * Gerencia a sessão do Supabase e sincroniza o perfil do usuário (Profiles).
+ */
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [state, setState] = useState<AuthState>({
+    user: null,
+    isLoading: true,
+    error: null
+  });
+
   const initialized = useRef(false);
 
   const syncUserProfile = useCallback(async () => {
     try {
       const currentUser = await userService.getCurrentUser();
-      setUser(currentUser);
+      
+      if (currentUser) {
+        // Força a normalização para garantir que 'CLIENT' ou 'CLIENTE' vire UserRole.CLIENT
+        currentUser.role = normalizeRole(currentUser.role);
+      }
+
+      setState(prev => ({ 
+        ...prev, 
+        user: currentUser, 
+        isLoading: false,
+        error: null 
+      }));
+      
       return currentUser;
-    } catch (error) {
-      console.error("[AuthContext] Profile Sync Error:", error);
-      setUser(null);
+    } catch (error: any) {
+      console.error("[AuthContext] Erro na Sincronização:", error);
+      setState(prev => ({ ...prev, user: null, isLoading: false, error: error.message }));
       return null;
-    } finally {
-      setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    const initAuth = async () => {
-      if (initialized.current) return;
-      initialized.current = true;
+    if (initialized.current) return;
+    initialized.current = true;
 
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          await syncUserProfile();
-        } else {
-          setIsLoading(false);
-        }
-      } catch (e) {
-        console.error("[AuthContext] Init Error:", e);
-        setIsLoading(false);
+    const initAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        await syncUserProfile();
+      } else {
+        setState(prev => ({ ...prev, isLoading: false }));
       }
     };
 
     initAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event) => {
-      if (event === 'SIGNED_IN') {
-        await syncUserProfile();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        if (session) await syncUserProfile();
       } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-        setIsLoading(false);
+        setState({ user: null, isLoading: false, error: null });
       }
     });
 
@@ -66,36 +82,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [syncUserProfile]);
 
   const login = async (email: string, password: string) => {
+    setState(prev => ({ ...prev, isLoading: true, error: null }));
     try {
       const authResult = await userService.authenticate(email, password);
-      if (!authResult.success) return authResult;
-
-      const profile = await syncUserProfile();
-      if (!profile) return { success: false, error: "Falha ao carregar perfil após login." };
-      
+      if (!authResult.success) {
+        setState(prev => ({ ...prev, isLoading: false, error: authResult.error }));
+        return authResult;
+      }
+      await syncUserProfile();
       return { success: true };
-    } catch (err) {
-      return { success: false, error: "Erro inesperado na autenticação." };
+    } catch (err: any) {
+      const msg = err.message || "Falha na autenticação.";
+      setState(prev => ({ ...prev, isLoading: false, error: msg }));
+      return { success: false, error: msg };
     }
   };
 
   const logout = async () => {
+    setState(prev => ({ ...prev, isLoading: true }));
     try {
       await userService.logout();
     } finally {
-      setUser(null);
+      setState({ user: null, isLoading: false, error: null });
       window.location.hash = '#/login';
     }
   };
 
+  const contextValue = useMemo(() => ({
+    ...state,
+    login,
+    logout,
+    refreshProfile: syncUserProfile
+  }), [state, syncUserProfile]);
+
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      isLoading, 
-      login, 
-      logout, 
-      refreshProfile: syncUserProfile 
-    }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
@@ -103,6 +124,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) throw new Error('useAuth must be used within AuthProvider');
+  if (context === undefined) {
+    throw new Error('useAuth deve ser utilizado dentro de um AuthProvider');
+  }
   return context;
 };
