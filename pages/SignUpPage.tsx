@@ -1,13 +1,12 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { 
   Loader2, Mail, Lock, User as UserIcon, ArrowRight, CheckCircle2, 
-  Globe, Building2, AlertOctagon, ChevronLeft, Eye, EyeOff, Briefcase 
+  ChevronLeft, Eye, EyeOff, Briefcase, AlertOctagon
 } from 'lucide-react';
-import { userService, adminService } from '../lib/services/index.ts';
-import { ClientOrganization } from '../types/index.ts';
+import { userService } from '../lib/services/index.ts';
 import { CookieBanner } from '../components/common/CookieBanner.tsx';
 import { PrivacyModal } from '../components/common/PrivacyModal.tsx';
 
@@ -15,19 +14,14 @@ const LOGO_URL = "https://wtydnzqianhahiiasows.supabase.co/storage/v1/object/pub
 
 const SignUpPage: React.FC = () => {
   const navigate = useNavigate();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
 
-  const [formData, setFormData] = useState({ fullName: '', email: '', password: '', confirmPassword: '', organizationId: '', department: '' });
-  const [clients, setClients] = useState<ClientOrganization[]>([]);
+  const [formData, setFormData] = useState({ fullName: '', email: '', password: '', confirmPassword: '', department: '' });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
-
-  useEffect(() => {
-    adminService.getClients().then(data => setClients(data.items.filter(c => c.status === 'ACTIVE')));
-  }, []);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +29,13 @@ const SignUpPage: React.FC = () => {
     
     setIsLoading(true);
     try {
-      await userService.signUp(formData.email.trim(), formData.password, formData.fullName.trim(), formData.organizationId === 'NEW' ? undefined : formData.organizationId, formData.department.trim());
+      await userService.signUp(
+        formData.email.trim(), 
+        formData.password, 
+        formData.fullName.trim(), 
+        undefined, // Sem organização vinculada no auto-cadastro interno
+        formData.department.trim()
+      );
       setSuccess(true);
       setTimeout(() => navigate('/login'), 3000);
     } catch (err: any) {
@@ -62,8 +62,8 @@ const SignUpPage: React.FC = () => {
             <img src={LOGO_URL} alt="Logo" className="h-10 object-contain drop-shadow-2xl" />
             <div className="space-y-4">
               <div className="h-px w-8 bg-[#B23C0E]"></div>
-              <h1 className="text-3xl font-black leading-tight tracking-tighter">{t('signup.requestAccess')}</h1>
-              <p className="text-slate-400 font-medium text-sm">{t('signup.joinNetwork')}</p>
+              <h1 className="text-3xl font-black leading-tight tracking-tighter">Cadastro Interno</h1>
+              <p className="text-slate-400 font-medium text-sm">Portal de conformidade técnica Aços Vital.</p>
             </div>
           </div>
         </div>
@@ -84,8 +84,8 @@ const SignUpPage: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormInput label={t('signup.fullName')} icon={UserIcon} value={formData.fullName} onChange={v => setFormData({...formData, fullName: v})} />
                   <FormInput label={t('signup.corpEmail')} icon={Mail} type="email" value={formData.email} onChange={v => setFormData({...formData, email: v})} />
-                  <FormSelect label={t('signup.organization')} icon={Building2} value={formData.organizationId} onChange={v => setFormData({...formData, organizationId: v})} options={clients} t={t} />
                   <FormInput label={t('signup.department')} icon={Briefcase} value={formData.department} onChange={v => setFormData({...formData, department: v})} />
+                  <div className="hidden md:block" /> {/* Spacer */}
                   <FormInput label={t('signup.password')} icon={Lock} type={showPassword ? "text" : "password"} value={formData.password} onChange={v => setFormData({...formData, password: v})} toggle={() => setShowPassword(!showPassword)} showToggle={showPassword} />
                   <FormInput label={t('signup.confirmPassword')} icon={Lock} type={showPassword ? "text" : "password"} value={formData.confirmPassword} onChange={v => setFormData({...formData, confirmPassword: v})} />
                 </div>
@@ -127,23 +127,6 @@ const FormInput = ({ label, icon: Icon, value, onChange, type = "text", toggle, 
         <div className={`w-12 h-12 flex items-center justify-center border-r transition-colors ${focused ? 'text-[#62A5FA] border-[#62A5FA]/10' : 'text-slate-300 border-slate-100'}`}><Icon size={16} strokeWidth={2.5} /></div>
         <input type={type} required className="flex-1 px-5 py-4 bg-transparent outline-none text-sm font-normal text-slate-800" value={value} onChange={e => onChange(e.target.value)} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} />
         {toggle && <button type="button" onClick={toggle} className="w-12 h-12 text-slate-300 hover:text-[#62A5FA]">{showToggle ? <Eye size={18} /> : <EyeOff size={18} />}</button>}
-      </div>
-    </div>
-  );
-};
-
-const FormSelect = ({ label, icon: Icon, value, onChange, options, t }: any) => {
-  const [focused, setFocused] = useState(false);
-  return (
-    <div className="space-y-2 group">
-      <label className={`text-[10px] font-black uppercase tracking-[2px] ml-1 transition-colors ${focused ? 'text-[#62A5FA]' : 'text-slate-400'}`}>{label}</label>
-      <div className={`flex items-center bg-slate-50 border-[1.5px] rounded-2xl overflow-hidden transition-all duration-300 ${focused ? 'border-[#62A5FA] bg-white ring-4 ring-[#62A5FA]/10 shadow-sm' : 'border-slate-100'}`}>
-        <div className={`w-12 h-12 flex items-center justify-center border-r transition-colors ${focused ? 'text-[#62A5FA] border-[#62A5FA]/10' : 'text-slate-300 border-slate-100'}`}><Icon size={16} strokeWidth={2.5} /></div>
-        <select required className="flex-1 px-5 py-4 bg-transparent outline-none text-sm font-normal text-slate-800 cursor-pointer appearance-none" value={value} onChange={e => onChange(e.target.value)} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}>
-          <option value="">{t('signup.select')}</option>
-          {options.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          <option value="NEW">{t('signup.companyNotListed')}</option>
-        </select>
       </div>
     </div>
   );

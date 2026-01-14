@@ -65,7 +65,7 @@ export const SupabaseUserService: IUserService = {
         email: email.trim().toLowerCase(),
         organization_id: organizationId || null,
         department: department || null,
-        role: 'CLIENT',
+        role: 'QUALITY',
         status: 'ACTIVE'
       });
     }
@@ -76,7 +76,6 @@ export const SupabaseUserService: IUserService = {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) return null;
 
-      // Primeiro buscamos o perfil. O join de organização é feito via relação !organization_id
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*, organizations!organization_id(name)')
@@ -84,8 +83,6 @@ export const SupabaseUserService: IUserService = {
         .maybeSingle();
 
       if (error) {
-        console.error("[UserService] Profile Fetch Error:", error.message);
-        // Fallback: Tentar buscar sem o join se o erro for de relação
         const { data: basicProfile } = await supabase
           .from('profiles')
           .select('*')
@@ -156,12 +153,11 @@ export const SupabaseUserService: IUserService = {
   },
 
   getUserStats: async () => {
-    const [total, active, clients] = await Promise.all([
+    const [total, active] = await Promise.all([
       supabase.from('profiles').select('*', { count: 'exact', head: true }),
-      supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('status', 'ACTIVE'),
-      supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'CLIENT')
+      supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('status', 'ACTIVE')
     ]);
-    return { total: total.count || 0, active: active.count || 0, clients: clients.count || 0 };
+    return { total: total.count || 0, active: active.count || 0, clients: 0 };
   },
 
   generateRandomPassword: () => Math.random().toString(36).slice(-10)

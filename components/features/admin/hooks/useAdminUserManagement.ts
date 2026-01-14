@@ -25,12 +25,12 @@ export const useAdminUserManagement = ({ setIsSaving }: UseAdminUserProps) => {
   
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  // Fix: Initialized status with AccountStatus.ACTIVE
+  
   const [formData, setFormData] = useState<UserFormData>({
     name: '',
     email: '',
     password: '',
-    role: UserRole.CLIENT,
+    role: UserRole.QUALITY,
     organizationId: '',
     department: '',
     status: AccountStatus.ACTIVE,
@@ -61,8 +61,7 @@ export const useAdminUserManagement = ({ setIsSaving }: UseAdminUserProps) => {
     return usersList.filter(u => {
       const matchesSearch = 
         u.name.toLowerCase().includes(search) || 
-        u.email.toLowerCase().includes(search) || 
-        (u.organizationName?.toLowerCase().includes(search));
+        u.email.toLowerCase().includes(search);
         
       const matchesRole = roleFilter === 'ALL' || u.role === roleFilter;
       return matchesSearch && matchesRole;
@@ -83,7 +82,6 @@ export const useAdminUserManagement = ({ setIsSaving }: UseAdminUserProps) => {
         );
         showToast("Novo acesso configurado com sucesso!", 'success');
       } else {
-        // Fix: status assignment now uses AccountStatus from form data
         const payload: User = {
           ...editingUser,
           name: formData.name,
@@ -122,7 +120,7 @@ export const useAdminUserManagement = ({ setIsSaving }: UseAdminUserProps) => {
       setEditingUser(null);
       setFormData({
         name: '', email: '', password: '', 
-        role: UserRole.CLIENT, organizationId: '', 
+        role: UserRole.QUALITY, organizationId: '', 
         status: AccountStatus.ACTIVE, department: ''
       });
     }

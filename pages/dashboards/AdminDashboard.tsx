@@ -6,8 +6,7 @@ import { useAuth } from '../../context/authContext.tsx';
 import { useAdminPage } from '../../components/features/admin/hooks/useAdminPage.ts';
 import { useTranslation } from 'react-i18next';
 import { 
-  Loader2, Users, ShieldCheck, Activity, ArrowRight, 
-  Building2, Server, Database 
+  Loader2, Users, ShieldCheck, Activity, ArrowRight
 } from 'lucide-react';
 import { AdminOverview } from '../../components/features/admin/views/AdminOverview.tsx';
 import { normalizeRole } from '../../types/index.ts';
@@ -21,7 +20,7 @@ const AdminDashboard: React.FC = () => {
   useEffect(() => {
     const role = normalizeRole(user?.role);
     if (user && role !== 'ADMIN') {
-      navigate(role === 'QUALITY' ? '/quality/dashboard' : '/client/dashboard', { replace: true });
+      navigate('/quality/dashboard', { replace: true });
     }
   }, [user, navigate]);
 
@@ -40,9 +39,8 @@ const AdminDashboard: React.FC = () => {
                 <h3 className="text-[10px] font-black uppercase tracking-[5px] text-slate-400">Infraestrutura e Governança</h3>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 <QuickAction icon={Users} label="Usuários" desc="Gestão de identidades e níveis de acesso." path="/admin?tab=users" color="bg-blue-600" navigate={navigate} />
-                <QuickAction icon={Building2} label="Clientes" desc="Administração do portfólio de empresas B2B." path="/admin?tab=clients" color="bg-indigo-600" navigate={navigate} />
                 <QuickAction icon={Activity} label="Auditoria" desc="Logs forenses de todas as ações no sistema." path="/admin?tab=logs" color="bg-slate-800" navigate={navigate} />
                 <QuickAction icon={ShieldCheck} label="Segurança" desc="Firewall e Modo de Manutenção." path="/admin?tab=settings" color="bg-emerald-600" navigate={navigate} />
             </div>

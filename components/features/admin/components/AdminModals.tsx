@@ -47,9 +47,6 @@ const SelectInput = (props: React.SelectHTMLAttributes<HTMLSelectElement>) => (
   <select {...props} className="w-full px-4 py-2.5 rounded-lg font-bold text-slate-900 bg-slate-50 border border-slate-300 focus:border-blue-500 transition-all" />
 );
 
-/* --- Business Components (SRP) --- */
-
-// Fix: Updated status property to use the canonical AccountStatus enum
 export interface UserFormData {
   name: string;
   email: string;
@@ -117,7 +114,6 @@ export const UserModal: React.FC<UserModalProps> = ({
               value={formData.role} 
               onChange={e => setFormData({...formData, role: e.target.value as UserRole})}
             >
-              <option value={UserRole.CLIENT}>{t('roles.CLIENT')}</option>
               <option value={UserRole.QUALITY}>{t('roles.QUALITY')}</option>
               <option value={UserRole.ADMIN}>{t('roles.ADMIN')}</option>
             </SelectInput>
@@ -131,29 +127,15 @@ export const UserModal: React.FC<UserModalProps> = ({
           </FormField>
         </div>
 
-        {formData.role === UserRole.CLIENT && (
-          <FormField label={t('admin.users.orgLink')} id="user-org">
-            <SelectInput 
-              id="user-org"
-              value={formData.organizationId} 
-              onChange={e => setFormData({...formData, organizationId: e.target.value})}
-            >
-              <option value="">{t('common.all')}</option>
-              {organizations.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </SelectInput>
-          </FormField>
-        )}
-
         <div className="pt-4 flex justify-end gap-3">
           <button type="button" onClick={onClose} className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-xl transition-colors">{t('common.cancel')}</button>
           <button type="submit" className="px-8 py-2 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg">{t('common.save')}</button>
         </div>
       </form>
-    </div>
+    </ModalFrame>
   );
 };
 
-// Fix: Updated status property to use the canonical AccountStatus enum
 export interface ClientFormData {
   name: string;
   cnpj: string;
@@ -268,8 +250,6 @@ export const ClientModal: React.FC<ClientModalProps> = ({
   );
 };
 
-/* --- Maintenance Scheduling Component --- */
-
 interface ScheduleMaintenanceModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -277,7 +257,6 @@ interface ScheduleMaintenanceModalProps {
   isSaving: boolean;
 }
 
-// Added and exported ScheduleMaintenanceModal to fix "has no exported member" error.
 export const ScheduleMaintenanceModal: React.FC<ScheduleMaintenanceModalProps> = ({ 
   isOpen, onClose, onSave, isSaving 
 }) => {

@@ -3,22 +3,20 @@ import React, { Suspense } from 'react';
 import { Layout } from '../components/layout/MainLayout.tsx';
 import { useAdminPage } from '../components/features/admin/hooks/useAdminPage.ts';
 import { useTranslation } from 'react-i18next';
-import { Loader2, Users, Building2, Activity, Settings, LayoutDashboard } from 'lucide-react';
+import { Loader2, Users, Activity, Settings, LayoutDashboard } from 'lucide-react';
 
 const AdminOverview = React.lazy(() => import('../components/features/admin/views/AdminOverview.tsx').then(m => ({ default: m.AdminOverview })));
 const AdminUsers = React.lazy(() => import('../components/features/admin/views/AdminUsers.tsx').then(m => ({ default: m.AdminUsers })));
-const AdminClients = React.lazy(() => import('../components/features/admin/views/AdminClients.tsx').then(m => ({ default: m.AdminClients })));
 const AdminLogs = React.lazy(() => import('../components/features/admin/views/AdminLogs.tsx').then(m => ({ default: m.AdminLogs })));
 const AdminSettings = React.lazy(() => import('../components/features/admin/views/AdminSettings.tsx').then(m => ({ default: m.AdminSettings })));
 
 const AdminPage: React.FC = () => {
   const { t } = useTranslation();
-  const { activeTab, isLoading, isSaving, setIsSaving, adminStats, systemStatus, setSystemStatus, qualityAnalysts, changeTab } = useAdminPage();
+  const { activeTab, isLoading, isSaving, setIsSaving, adminStats, systemStatus, setSystemStatus, changeTab } = useAdminPage();
 
   const tabs = [
     { id: 'overview', label: t('admin.tabs.overview'), icon: LayoutDashboard },
     { id: 'users', label: t('admin.tabs.users'), icon: Users },
-    { id: 'clients', label: t('admin.tabs.clients'), icon: Building2 },
     { id: 'logs', label: t('admin.tabs.logs'), icon: Activity },
     { id: 'settings', label: t('admin.tabs.settings'), icon: Settings },
   ];
@@ -28,15 +26,24 @@ const AdminPage: React.FC = () => {
       <div className="flex flex-col gap-6 pb-20 relative">
         <TabNavigation tabs={tabs} activeTab={activeTab} onTabChange={changeTab} />
 
-        {isSaving && <div className="fixed top-24 right-1/2 translate-x-1/2 z-[110] bg-slate-900 text-white px-6 py-2.5 rounded-full shadow-2xl flex items-center gap-3 text-[10px] font-black uppercase tracking-widest animate-in fade-in duration-300"><Loader2 size={14} className="animate-spin text-blue-400" /> Sincronizando...</div>}
+        {isSaving && (
+          <div className="fixed top-24 right-1/2 translate-x-1/2 z-[110] bg-slate-900 text-white px-6 py-2.5 rounded-full shadow-2xl flex items-center gap-3 text-[10px] font-black uppercase tracking-widest animate-in fade-in duration-300">
+            <Loader2 size={14} className="animate-spin text-blue-400" /> Sincronizando...
+          </div>
+        )}
 
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
           <Suspense fallback={<TabLoadingIndicator />}>
             {activeTab === 'overview' && <AdminOverview stats={adminStats} />}
             {activeTab === 'users' && <AdminUsers setIsSaving={setIsSaving} />}
-            {activeTab === 'clients' && <AdminClients setIsSaving={setIsSaving} qualityAnalysts={qualityAnalysts} />}
             {activeTab === 'logs' && <AdminLogs />}
-            {activeTab === 'settings' && systemStatus && <AdminSettings systemStatus={systemStatus} setSystemStatus={setSystemStatus} setIsSaving={setIsSaving} />}
+            {activeTab === 'settings' && systemStatus && (
+              <AdminSettings 
+                systemStatus={systemStatus} 
+                setSystemStatus={setSystemStatus} 
+                setIsSaving={setIsSaving} 
+              />
+            )}
           </Suspense>
         </div>
       </div>

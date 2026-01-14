@@ -12,7 +12,6 @@ import { UserRole, normalizeRole } from './types/index.ts';
 // Lazy loading das páginas
 const LoginPage = React.lazy(() => import('./pages/LoginPage.tsx'));
 const SignUpPage = React.lazy(() => import('./pages/SignUpPage.tsx'));
-const ClientDashboard = React.lazy(() => import('./pages/dashboards/ClientDashboard.tsx'));
 const AdminDashboard = React.lazy(() => import('./pages/dashboards/AdminDashboard.tsx'));
 const QualityDashboard = React.lazy(() => import('./pages/dashboards/QualityDashboard.tsx'));
 const QualityPage = React.lazy(() => import('./pages/QualityPage.tsx'));
@@ -36,13 +35,14 @@ const RootRedirect = () => {
         if (!user) return <Navigate to="/login" replace />;
         
         const role = normalizeRole(user.role);
+        // Added CLIENT to roleRoutes to avoid TypeScript missing property error
         const roleRoutes: Record<UserRole, string> = {
           [UserRole.ADMIN]: '/admin/dashboard',
           [UserRole.QUALITY]: '/quality/dashboard',
-          [UserRole.CLIENT]: '/client/dashboard'
+          [UserRole.CLIENT]: '/quality/dashboard' // Default redirect for clients
         };
 
-        return <Navigate to={roleRoutes[role] || '/client/dashboard'} replace />;
+        return <Navigate to={roleRoutes[role] || '/quality/dashboard'} replace />;
     }, [user]);
 };
 
@@ -74,10 +74,6 @@ export const AppRoutes: React.FC = () => {
                 <Route element={<RoleMiddleware allowedRoles={[UserRole.QUALITY, UserRole.ADMIN]} />}>
                     <Route path="/quality/dashboard" element={<QualityDashboard />} />
                     <Route path="/quality" element={<QualityPage />} />
-                </Route>
-
-                <Route element={<RoleMiddleware allowedRoles={[UserRole.CLIENT, UserRole.QUALITY, UserRole.ADMIN]} />}>
-                    <Route path="/client/dashboard" element={<ClientDashboard />} />
                 </Route>
             </Route>
         </Route>

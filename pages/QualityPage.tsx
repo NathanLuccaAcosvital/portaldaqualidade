@@ -3,16 +3,11 @@ import React, { Suspense } from 'react';
 import { Layout } from '../components/layout/MainLayout.tsx';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Loader2, BarChart3, Building2, History, ShieldCheck } from 'lucide-react';
+import { Loader2, BarChart3, History, ShieldCheck } from 'lucide-react';
 
 const QualityOverview = React.lazy(() => import('../components/features/quality/views/QualityOverview.tsx').then(m => ({ default: m.QualityOverview })));
-const ClientList = React.lazy(() => import('../components/features/quality/views/ClientList.tsx').then(m => ({ default: m.ClientList })));
 const QualityAuditLog = React.lazy(() => import('../components/features/quality/views/QualityAuditLog.tsx').then(m => ({ default: m.QualityAuditLog })));
 
-/**
- * QualityPage (High-Level Controller)
- * Gerencia a navegação entre as visões do módulo de Qualidade.
- */
 const QualityPage: React.FC = () => {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -20,14 +15,12 @@ const QualityPage: React.FC = () => {
 
   const VIEWS = [
     { id: 'overview', label: t('quality.overview'), icon: BarChart3 },
-    { id: 'clients', label: t('quality.b2bPortfolio'), icon: Building2 },
     { id: 'audit-log', label: t('quality.myAuditLog'), icon: History },
   ];
 
   const renderView = () => {
     switch (activeView) {
       case 'overview': return <QualityOverview />;
-      case 'clients': return <ClientList onSelectClient={(c) => setSearchParams({ view: 'files', clientId: c.id })} />;
       case 'audit-log': return <QualityAuditLog />;
       default: return <QualityOverview />;
     }
@@ -56,12 +49,10 @@ const QualityPage: React.FC = () => {
                 ))}
             </nav>
 
-            {activeView === 'clients' && (
-                <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase bg-white px-4 py-2 rounded-xl border border-slate-200">
-                    <ShieldCheck size={14} className="text-emerald-500" />
-                    Monitoramento Industrial Ativo
-                </div>
-            )}
+            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase bg-white px-4 py-2 rounded-xl border border-slate-200">
+                <ShieldCheck size={14} className="text-emerald-500" />
+                Monitoramento Industrial Ativo
+            </div>
         </header>
 
         <main className="min-h-[calc(100vh-250px)] animate-in fade-in slide-in-from-bottom-2 duration-500">

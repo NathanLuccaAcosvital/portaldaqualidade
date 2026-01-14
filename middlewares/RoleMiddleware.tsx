@@ -29,16 +29,14 @@ export const RoleMiddleware: React.FC<RoleMiddlewareProps> = ({ allowedRoles }) 
 };
 
 /**
- * Estratégia de fallback explícita para as 3 roles principais.
+ * Estratégia de fallback explícita para os perfis internos.
  */
 const getSecureFallbackPath = (role: UserRole): string => {
   switch (role) {
     case UserRole.ADMIN:
       return '/admin/dashboard';
     case UserRole.QUALITY:
-      return '/quality/dashboard';
-    case UserRole.CLIENT:
     default:
-      return '/client/dashboard';
+      return '/quality/dashboard';
   }
 };

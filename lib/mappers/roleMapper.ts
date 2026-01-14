@@ -6,20 +6,21 @@ import { UserRole } from '../../types/auth.ts';
  * Mapeia variações de strings do banco para o Enum de domínio.
  */
 export const normalizeRole = (role: unknown): UserRole => {
-    if (!role) return UserRole.CLIENT;
+    if (!role) return UserRole.QUALITY;
     
     const normalized = String(role).trim().toUpperCase();
     
-    // Mapeamento robusto suportando PT-BR e EN-US
+    // Mapeamento robusto para operação interna da Aços Vital
+    // Added CLIENT and CLIENTE mappings
     const roleMap: Record<string, UserRole> = {
         'ADMIN': UserRole.ADMIN,
         'ADMINISTRADOR': UserRole.ADMIN,
         'QUALITY': UserRole.QUALITY,
         'QUALIDADE': UserRole.QUALITY,
+        'ANALISTA': UserRole.QUALITY,
         'CLIENT': UserRole.CLIENT,
-        'CLIENTE': UserRole.CLIENT,
-        'USER': UserRole.CLIENT
+        'CLIENTE': UserRole.CLIENT
     };
 
-    return roleMap[normalized] || UserRole.CLIENT;
+    return roleMap[normalized] || UserRole.QUALITY;
 };

@@ -28,16 +28,6 @@ export const SupabaseFileService: IFileService = {
   getFiles: async (user, folderId, page = 1, pageSize = 50): Promise<PaginatedResponse<FileNode>> => {
     let query = supabase.from('files').select('*', { count: 'exact' });
 
-    // Multi-tenant isolation
-    if (normalizeRole(user.role) === UserRole.CLIENT) {
-      if (!user.organizationId) return { items: [], total: 0, hasMore: false };
-      
-      // Regra de Ouro para Clientes:
-      // 1. Ver todas as pastas vinculadas à sua organização
-      // 2. Ver apenas arquivos (PDF/IMAGE) que estejam APROVADOS
-      query = query.eq('owner_id', user.organizationId).or(`type.eq.FOLDER,and(type.neq.FOLDER,metadata->>status.eq.${QualityStatus.APPROVED})`);
-    }
-
     if (folderId) {
       query = query.eq('parent_id', folderId);
     } else {
@@ -66,14 +56,11 @@ export const SupabaseFileService: IFileService = {
   },
 
   getRecentFiles: async (user, limit = 10) => {
-    let query = supabase.from('files').select('*').limit(limit).order('updated_at', { ascending: false });
-    
-    if (normalizeRole(user.role) === UserRole.CLIENT) {
-        if (!user.organizationId) return [];
-        query = query.eq('owner_id', user.organizationId).or(`type.eq.FOLDER,and(type.neq.FOLDER,metadata->>status.eq.${QualityStatus.APPROVED})`);
-    }
+    const { data, error } = await supabase.from('files')
+        .select('*')
+        .limit(limit)
+        .order('updated_at', { ascending: false });
 
-    const { data, error } = await query;
     if (error) throw error;
     return (data || []).map(toDomainFile);
   },
@@ -83,19 +70,13 @@ export const SupabaseFileService: IFileService = {
   },
 
   getDashboardStats: async (user): Promise<DashboardStatsData> => {
-    const orgId = user.organizationId;
-    if (!orgId) return { mainValue: 0, subValue: 0, pendingValue: 0, status: 'REGULAR', mainLabel: '', subLabel: '' };
-
-    // Para o dashboard do cliente, contamos apenas arquivos aprovados (excluindo pastas do total de documentos técnicos)
     const [totalApproved, totalPending] = await Promise.all([
       supabase.from('files')
         .select('*', { count: 'exact', head: true })
-        .eq('owner_id', orgId)
         .neq('type', 'FOLDER')
         .eq('metadata->>status', QualityStatus.APPROVED),
       supabase.from('files')
         .select('*', { count: 'exact', head: true })
-        .eq('owner_id', orgId)
         .neq('type', 'FOLDER')
         .eq('metadata->>status', QualityStatus.PENDING)
     ]);
@@ -105,7 +86,7 @@ export const SupabaseFileService: IFileService = {
         subValue: totalApproved.count || 0,
         pendingValue: totalPending.count || 0,
         status: (totalPending.count || 0) > 0 ? 'PENDING' : 'REGULAR',
-        mainLabel: 'Certificados Disponíveis',
+        mainLabel: 'Certificados Globais',
         subLabel: 'Docs. Validados'
     };
   },
@@ -115,7 +96,7 @@ export const SupabaseFileService: IFileService = {
         name,
         type: 'FOLDER',
         parent_id: parentId,
-        owner_id: ownerId || user.organizationId,
+        owner_id: ownerId || null,
         storage_path: 'system/folder',
         updated_at: new Date().toISOString()
     }).select().single();
@@ -157,15 +138,11 @@ export const SupabaseFileService: IFileService = {
   },
 
   searchFiles: async (user, query, page = 1, pageSize = 20) => {
-    let q = supabase.from('files').select('*', { count: 'exact' }).ilike('name', `%${query}%`);
-    
-    if (normalizeRole(user.role) === UserRole.CLIENT) {
-        if (!user.organizationId) return { items: [], total: 0, hasMore: false };
-        q = q.eq('owner_id', user.organizationId).or(`type.eq.FOLDER,and(type.neq.FOLDER,metadata->>status.eq.${QualityStatus.APPROVED})`);
-    }
-
     const from = (page - 1) * pageSize;
-    const { data, count, error } = await q.range(from, from + pageSize - 1);
+    const { data, count, error } = await supabase.from('files')
+        .select('*', { count: 'exact' })
+        .ilike('name', `%${query}%`)
+        .range(from, from + pageSize - 1);
     
     if (error) throw error;
     return {

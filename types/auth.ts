@@ -1,6 +1,7 @@
 
 import { ID, ISO8601Date, CNPJ } from './common.ts';
 
+// Added CLIENT to the UserRole enum
 export enum UserRole {
   ADMIN = 'ADMIN',
   QUALITY = 'QUALITY',

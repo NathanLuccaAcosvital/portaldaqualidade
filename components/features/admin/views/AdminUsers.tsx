@@ -63,7 +63,7 @@ const UsersControlPanel = ({ searchTerm, onSearchChange, roleFilter, onRoleFilte
       <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={20} />
       <input
         type="text"
-        placeholder="Identidade, e-mail ou empresa..."
+        placeholder="Identidade, e-mail ou departamento..."
         className="pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm w-full outline-none focus:ring-4 focus:ring-blue-500/10 focus:bg-white focus:border-blue-500 transition-all font-medium"
         value={searchTerm}
         onChange={e => onSearchChange(e.target.value)}
@@ -91,7 +91,7 @@ const UsersControlPanel = ({ searchTerm, onSearchChange, roleFilter, onRoleFilte
 
 const RoleFilterBar = ({ currentFilter, onFilterChange, t }: any) => (
   <div className="flex items-center gap-1 bg-slate-100 p-1.5 rounded-2xl">
-    {(['ALL', UserRole.ADMIN, UserRole.QUALITY, UserRole.CLIENT] as const).map(role => (
+    {(['ALL', UserRole.ADMIN, UserRole.QUALITY] as const).map(role => (
       <button
         key={role}
         onClick={() => onFilterChange(role)}
