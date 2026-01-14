@@ -8,7 +8,7 @@ export const LoginHero: React.FC = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="relative z-10 flex flex-col w-full h-full text-white overflow-hidden p-12 lg:p-16 xl:p-20 2xl:p-32">
+    <div className="relative z-10 flex flex-col w-full h-full text-white overflow-hidden pt-8 lg:pt-10 xl:pt-12 2xl:pt-20 px-12 lg:px-16 xl:px-20 2xl:px-32 pb-12 lg:pb-16 xl:pb-20 2xl:pb-32">
       {/* Grid Industrial de Fundo - Sutil e Profissional */}
       <div 
         className="absolute inset-0 opacity-[0.04] pointer-events-none" 
@@ -19,12 +19,12 @@ export const LoginHero: React.FC = () => {
         aria-hidden="true"
       />
 
-      {/* Header: Logo - Escala refinada para notebook */}
+      {/* Header: Logo - Movida para cima e tamanho aumentado proporcionalmente */}
       <div className="relative z-10 shrink-0 mb-auto animate-in fade-in slide-in-from-left-8 duration-1000">
         <img 
           src="https://wtydnzqianhahiiasows.supabase.co/storage/v1/object/public/public_assets/hero/logo.png" 
           alt="Aços Vital - Logo Industrial" 
-          className="h-9 sm:h-10 md:h-11 lg:h-11 xl:h-12 2xl:h-16 object-contain filter brightness-0 invert drop-shadow-2xl" 
+          className="h-12 sm:h-14 md:h-16 lg:h-16 xl:h-20 2xl:h-28 object-contain filter brightness-0 invert drop-shadow-2xl" 
         />
       </div>
 
