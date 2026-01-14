@@ -21,7 +21,7 @@ export const LoginHero: React.FC = () => {
         <img 
           src="https://wtydnzqianhahiiasows.supabase.co/storage/v1/object/public/public_assets/hero/logo.png" 
           alt="Aços Vital" 
-          className="h-7 sm:h-9 md:h-10 lg:h-12 xl:h-14 2xl:h-24 object-contain filter brightness-0 invert drop-shadow-xl" 
+          className="h-7 sm:h-9 md:h-10 lg:h-12 xl:h-14 2xl:h-20 object-contain filter brightness-0 invert drop-shadow-xl" 
         />
       </div>
 
@@ -42,7 +42,7 @@ export const LoginHero: React.FC = () => {
         </div>
         
         <p className="text-xs sm:text-sm md:text-base lg:text-base xl:text-lg 2xl:text-xl text-slate-300 font-medium leading-relaxed max-w-xs sm:max-w-md md:max-w-lg xl:max-w-xl">
-          Convergência entre metalurgia avançada e governança digital de alta performance para a indústria moderna.
+          {t('login.heroSubtitle')}
         </p>
         
         <div className="flex flex-wrap gap-2 sm:gap-3 pt-2">
@@ -55,7 +55,7 @@ export const LoginHero: React.FC = () => {
         </div>
       </div>
 
-      <div className="relative z-10 mt-6 sm:mt-12 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-12 border-t border-white/10 pt-8 text-[8px] sm:text-[9px] md:text-[11px] lg:text-[12px] xl:text-[13px] 2xl:text-[15px] font-black uppercase tracking-[2px] sm:tracking-[4px]">
+      <div className="relative z-10 mt-6 sm:mt-12 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-t border-white/10 pt-6 text-[8px] sm:text-[9px] md:text-[10px] lg:text-[11px] xl:text-[12px] font-black uppercase tracking-[2px] sm:tracking-[3px]">
           <div className="flex items-center gap-4 text-slate-400">
             <div className="relative flex h-1.5 w-1.5 sm:h-2 sm:w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -64,13 +64,10 @@ export const LoginHero: React.FC = () => {
             <span>{t('login.monitoring')}</span>
           </div>
 
-          <div className="flex items-center gap-8 sm:gap-12 ml-auto">
+          <div className="flex items-center ml-auto">
             <button className="text-slate-400 hover:text-white transition-all whitespace-nowrap">
               POLÍTICA DE DADOS
             </button>
-            <span className="text-white font-black drop-shadow-sm whitespace-nowrap">
-              © 2026 AÇOS VITAL S.A.
-            </span>
           </div>
       </div>
       
