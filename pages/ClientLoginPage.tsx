@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '../context/authContext.tsx';
 import { useTranslation } from 'react-i18next';
@@ -47,20 +46,20 @@ const ClientLoginPage: React.FC = () => {
           <LanguageSelector />
         </div>
 
-        <div className="w-full max-w-[440px] animate-in zoom-in-95 duration-700">
-          <div className="space-y-12">
+        <div className="w-full max-w-[390px] animate-in zoom-in-95 duration-700">
+          <div className="space-y-10">
             <LoginForm 
               onSubmit={handleLogin}
               isLoading={isLoading}
               error={error}
             />
 
-            <footer className="pt-12 border-t border-slate-100 flex items-center justify-between">
+            <footer className="pt-10 border-t border-slate-100 flex items-center justify-between">
                <div className="space-y-1">
-                  <p className="text-[10px] font-black text-slate-800 uppercase tracking-[3px]">Aços Vital S.A.</p>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Sistemas de Gestão Industrial</p>
+                  <p className="text-[9.5px] font-black text-slate-800 uppercase tracking-[2.5px]">Aços Vital S.A.</p>
+                  <p className="text-[8.5px] font-bold text-slate-400 uppercase tracking-widest">Sistemas de Gestão Industrial</p>
                </div>
-               <img src="https://wtydnzqianhahiiasows.supabase.co/storage/v1/object/public/public_assets/hero/logo.png" alt="" className="h-6 opacity-20 grayscale" />
+               <img src="https://wtydnzqianhahiiasows.supabase.co/storage/v1/object/public/public_assets/hero/logo.png" alt="" className="h-5 opacity-20 grayscale" />
             </footer>
           </div>
         </div>
