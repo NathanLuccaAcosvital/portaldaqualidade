@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -17,8 +18,7 @@ import {
   Briefcase
 } from 'lucide-react';
 import { userService, adminService } from '../lib/services/index.ts';
-// Fix: Updated import path for 'types' module to explicitly include '/index'
-import { ClientOrganization } from '../types/index'; // Atualizado
+import { ClientOrganization, UserRole } from '../types/index';
 import { CookieBanner } from '../components/common/CookieBanner.tsx';
 import { PrivacyModal } from '../components/common/PrivacyModal.tsx';
 
@@ -76,12 +76,16 @@ const SignUp: React.FC = () => {
         ? undefined 
         : formData.organizationId;
 
+      // Atribui role CLIENT se houver organização, senão QUALITY (interno)
+      const assignedRole = orgIdToSubmit ? UserRole.CLIENT : UserRole.QUALITY;
+
       await userService.signUp(
         formData.email.trim(), 
         formData.password, 
         formData.fullName.trim(), 
         orgIdToSubmit, 
-        formData.department.trim()
+        formData.department.trim(),
+        assignedRole
       );
       
       setSuccess(true);
@@ -106,12 +110,11 @@ const SignUp: React.FC = () => {
         className={`flex items-center bg-slate-50 border-[1.5px] rounded-2xl overflow-hidden transition-all duration-300
         ${focusedInput === fieldId ? 'border-[#62A5FA] bg-white ring-4 ring-[#62A5FA]/10 shadow-sm' : 'border-slate-100'}`}
       >
-        <div className={`w-12 h-12 flex items-center justify-center border-r transition-colors ${focusedInput === fieldId ? 'text-[#62A5FA] border-[#62A5FA]/10' : 'text-slate-300 border-slate-100'}`}>
+        <div className={`w-12 h-14 flex items-center justify-center border-r transition-colors ${focusedInput === fieldId ? 'text-[#62A5FA] border-[#62A5FA]/10' : 'text-slate-300 border-slate-100'}`}>
           <Icon size={16} strokeWidth={2.5} aria-hidden="true" />
         </div>
         {React.Children.map(children, child => {
           if (React.isValidElement(child) && child.type === 'input') {
-            // Fix: Explicitly type the cloned element's props to ensure correct prop inference for onFocus/onBlur
             type InputProps = React.InputHTMLAttributes<HTMLInputElement>;
             const originalProps = child.props as InputProps;
             return React.cloneElement<InputProps>(child, {
@@ -124,7 +127,6 @@ const SignUp: React.FC = () => {
             });
           }
           if (React.isValidElement(child) && child.type === 'select') {
-            // Fix: Explicitly type the cloned element's props to ensure correct prop inference for onFocus/onBlur
             type SelectProps = React.SelectHTMLAttributes<HTMLSelectElement>;
             const originalProps = child.props as SelectProps;
             return React.cloneElement<SelectProps>(child, {

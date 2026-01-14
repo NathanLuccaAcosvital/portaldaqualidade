@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Eye, Filter } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -91,7 +90,8 @@ const TableHeader = ({ t }: { t: any }) => (
   </thead>
 );
 
-const AuditLogRow = ({ log, onInvestigate }: { log: AuditLog, onInvestigate: () => void }) => (
+// DO: Explicitly typing as React.FC to handle 'key' prop correctly in list iterations
+const AuditLogRow: React.FC<{ log: AuditLog, onInvestigate: () => void }> = ({ log, onInvestigate }) => (
   <tr className="hover:bg-slate-50 transition-colors group cursor-pointer" onClick={onInvestigate}>
       <td className="px-6 py-3 text-xs text-slate-500 font-mono whitespace-nowrap">
           {new Date(log.timestamp).toLocaleString()}

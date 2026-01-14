@@ -28,6 +28,22 @@ export const SupabaseFileService: IFileService = {
   getFiles: async (user, folderId, page = 1, pageSize = 50): Promise<PaginatedResponse<FileNode>> => {
     let query = supabase.from('files').select('*', { count: 'exact' });
 
+    const role = normalizeRole(user.role);
+
+    // Restrição de Segurança: Clientes só veem o que é deles e está aprovado
+    if (role === UserRole.CLIENT) {
+      if (user.organizationId) {
+        query = query.eq('owner_id', user.organizationId);
+      } else {
+        // Se cliente não tem org vinculada, não vê nada por segurança
+        return { items: [], total: 0, hasMore: false };
+      }
+      
+      // Filtra apenas por APPROVED se for arquivo (folders não tem status em metadata geralmente, ou tratamos via owner_id)
+      // Nota: No Supabase JSONB filtering
+      query = query.or(`type.eq.FOLDER,metadata->>status.eq.${QualityStatus.APPROVED}`);
+    }
+
     if (folderId) {
       query = query.eq('parent_id', folderId);
     } else {
@@ -56,8 +72,14 @@ export const SupabaseFileService: IFileService = {
   },
 
   getRecentFiles: async (user, limit = 10) => {
-    const { data, error } = await supabase.from('files')
-        .select('*')
+    let query = supabase.from('files').select('*');
+    
+    const role = normalizeRole(user.role);
+    if (role === UserRole.CLIENT && user.organizationId) {
+        query = query.eq('owner_id', user.organizationId).eq('metadata->>status', QualityStatus.APPROVED);
+    }
+
+    const { data, error } = await query
         .limit(limit)
         .order('updated_at', { ascending: false });
 
@@ -70,15 +92,19 @@ export const SupabaseFileService: IFileService = {
   },
 
   getDashboardStats: async (user): Promise<DashboardStatsData> => {
+    const role = normalizeRole(user.role);
+    
+    let baseQuery = supabase.from('files').select('*', { count: 'exact', head: true }).neq('type', 'FOLDER');
+    
+    if (role === UserRole.CLIENT && user.organizationId) {
+        baseQuery = baseQuery.eq('owner_id', user.organizationId);
+    }
+
     const [totalApproved, totalPending] = await Promise.all([
-      supabase.from('files')
-        .select('*', { count: 'exact', head: true })
-        .neq('type', 'FOLDER')
-        .eq('metadata->>status', QualityStatus.APPROVED),
-      supabase.from('files')
-        .select('*', { count: 'exact', head: true })
-        .neq('type', 'FOLDER')
-        .eq('metadata->>status', QualityStatus.PENDING)
+      baseQuery.clone().eq('metadata->>status', QualityStatus.APPROVED),
+      role === UserRole.CLIENT 
+        ? { count: 0 } // Clientes não veem contagem de pendências técnicas internas da mesma forma
+        : baseQuery.clone().eq('metadata->>status', QualityStatus.PENDING)
     ]);
     
     return {
@@ -86,8 +112,8 @@ export const SupabaseFileService: IFileService = {
         subValue: totalApproved.count || 0,
         pendingValue: totalPending.count || 0,
         status: (totalPending.count || 0) > 0 ? 'PENDING' : 'REGULAR',
-        mainLabel: 'Certificados Globais',
-        subLabel: 'Docs. Validados'
+        mainLabel: role === UserRole.CLIENT ? 'Meus Certificados' : 'Certificados Globais',
+        subLabel: role === UserRole.CLIENT ? 'Validados e Prontos' : 'Docs. Validados'
     };
   },
 
@@ -139,9 +165,14 @@ export const SupabaseFileService: IFileService = {
 
   searchFiles: async (user, query, page = 1, pageSize = 20) => {
     const from = (page - 1) * pageSize;
-    const { data, count, error } = await supabase.from('files')
-        .select('*', { count: 'exact' })
-        .ilike('name', `%${query}%`)
+    let baseQuery = supabase.from('files').select('*', { count: 'exact' }).ilike('name', `%${query}%`);
+    
+    const role = normalizeRole(user.role);
+    if (role === UserRole.CLIENT && user.organizationId) {
+        baseQuery = baseQuery.eq('owner_id', user.organizationId).or(`type.eq.FOLDER,metadata->>status.eq.${QualityStatus.APPROVED}`);
+    }
+
+    const { data, count, error } = await baseQuery
         .range(from, from + pageSize - 1);
     
     if (error) throw error;
@@ -173,7 +204,15 @@ export const SupabaseFileService: IFileService = {
   getFavorites: async (user) => {
     const { data, error } = await supabase.from('file_favorites').select('files(*)').eq('user_id', user.id);
     if (error) throw error;
-    return (data || []).map(f => toDomainFile(f.files));
+    
+    const role = normalizeRole(user.role);
+    let filteredData = (data || []).map(f => toDomainFile(f.files));
+    
+    if (role === UserRole.CLIENT) {
+        filteredData = filteredData.filter(f => f.metadata?.status === QualityStatus.APPROVED);
+    }
+    
+    return filteredData;
   },
 
   getFileSignedUrl: async (user, fileId): Promise<string> => {

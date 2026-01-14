@@ -11,7 +11,8 @@ import {
   Lock,
   FileText,
   LayoutDashboard,
-  ShieldAlert
+  ShieldAlert,
+  Clock
 } from 'lucide-react';
 import { User, UserRole, normalizeRole } from '../types/index.ts';
 
@@ -59,12 +60,29 @@ const getQualityNavigation = (t: any): NavSection[] => [
   }
 ];
 
+const getClientNavigation = (t: any): NavSection[] => [
+  {
+    title: "MEU PORTAL",
+    items: [
+      { label: t('menu.dashboard'), path: '/client/dashboard', icon: LayoutDashboard, exact: true },
+      { label: t('menu.library'), path: '/client/dashboard?view=files', icon: Library },
+    ]
+  },
+  {
+    title: "SUGESTÕES",
+    items: [
+      { label: t('menu.favorites'), path: '/client/dashboard?view=favorites', icon: Star },
+    ]
+  }
+];
+
 export const getMenuConfig = (user: User | null, t: any): NavSection[] => {
   if (!user) return [];
   const role = normalizeRole(user.role);
   const navigationMap: Record<UserRole, (t: any) => NavSection[]> = {
     [UserRole.ADMIN]: getAdminNavigation,
     [UserRole.QUALITY]: getQualityNavigation,
+    [UserRole.CLIENT]: getClientNavigation,
   };
   return navigationMap[role]?.(t) || [];
 };
@@ -78,6 +96,14 @@ export const getBottomNavItems = (user: User | null, t: any): NavItem[] => {
       { label: "Dash", path: '/admin/dashboard', icon: LayoutDashboard, exact: true },
       { label: "Usuários", path: '/admin?tab=users', icon: Users },
       { label: "Logs", path: '/admin?tab=logs', icon: ShieldAlert },
+    ];
+  }
+
+  if (role === UserRole.CLIENT) {
+    return [
+      { label: "Início", path: '/client/dashboard', icon: LayoutDashboard, exact: true },
+      { label: "Docs", path: '/client/dashboard?view=files', icon: Library },
+      { label: "Favoritos", path: '/client/dashboard?view=favorites', icon: Star },
     ];
   }
   

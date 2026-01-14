@@ -1,7 +1,5 @@
 {
   "name": "Aços Vital - Portal da Qualidade",
   "description": "Sistema de gestão industrial focado em conformidade, rastreabilidade e certificados de qualidade.",
-  "requestFramePermissions": [
-    "camera"
-  ]
+  "requestFramePermissions": []
 }

@@ -50,7 +50,7 @@ export interface QualityOverviewStats {
 
 export interface IUserService {
   authenticate: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signUp: (email: string, password: string, fullName: string, organizationId?: string, department?: string) => Promise<void>;
+  signUp: (email: string, password: string, fullName: string, organizationId?: string, department?: string, role?: UserRole) => Promise<void>;
   getCurrentUser: () => Promise<User | null>;
   logout: () => Promise<void>;
   getUsers: () => Promise<User[]>;

@@ -1,4 +1,3 @@
-
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertOctagon, RefreshCw, Home } from 'lucide-react';
 
@@ -15,7 +14,8 @@ interface State {
  * Boundary de Erros do Sistema (S)
  * Única responsabilidade: Capturar exceções não tratadas e fornecer fallback seguro.
  */
-export class ErrorBoundary extends Component<Props, State> {
+// DO: Explicitly using React.Component to ensure type resolution of this.state and this.props
+export class ErrorBoundary extends React.Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = { hasError: false };

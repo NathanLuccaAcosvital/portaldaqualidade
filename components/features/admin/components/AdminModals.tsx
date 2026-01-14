@@ -114,6 +114,7 @@ export const UserModal: React.FC<UserModalProps> = ({
               value={formData.role} 
               onChange={e => setFormData({...formData, role: e.target.value as UserRole})}
             >
+              <option value={UserRole.CLIENT}>{t('roles.CLIENT')}</option>
               <option value={UserRole.QUALITY}>{t('roles.QUALITY')}</option>
               <option value={UserRole.ADMIN}>{t('roles.ADMIN')}</option>
             </SelectInput>
@@ -126,6 +127,19 @@ export const UserModal: React.FC<UserModalProps> = ({
             />
           </FormField>
         </div>
+
+        <FormField label={t('admin.users.org')} id="user-org">
+          <SelectInput 
+            id="user-org"
+            value={formData.organizationId} 
+            onChange={e => setFormData({...formData, organizationId: e.target.value})}
+          >
+            <option value="">Aços Vital (Interno)</option>
+            {organizations.map(org => (
+              <option key={org.id} value={org.id}>{org.name}</option>
+            ))}
+          </SelectInput>
+        </FormField>
 
         <div className="pt-4 flex justify-end gap-3">
           <button type="button" onClick={onClose} className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-xl transition-colors">{t('common.cancel')}</button>

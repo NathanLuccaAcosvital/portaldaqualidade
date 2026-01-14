@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { User, UserRole, AccountStatus } from '../../../../types/index.ts';
 import { MoreVertical, Edit2, Building2, Briefcase, Clock } from 'lucide-react';
@@ -55,9 +54,10 @@ export const UserList: React.FC<UserListProps> = ({ users, onEdit }) => {
 
 /* --- Sub-componentes Especializados (SRP + Clean Code) --- */
 
-const UserRow = ({ user, isDropdownOpen, onToggleDropdown, onEdit }: { 
+// DO: Explicitly typing as React.FC to handle 'key' prop correctly in list iterations
+const UserRow: React.FC<{ 
   user: User, isDropdownOpen: boolean, onToggleDropdown: () => void, onEdit: () => void 
-}) => {
+}> = ({ user, isDropdownOpen, onToggleDropdown, onEdit }) => {
   const { t } = useTranslation();
   
   return (

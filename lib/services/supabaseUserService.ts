@@ -50,7 +50,7 @@ export const SupabaseUserService: IUserService = {
     }
   },
 
-  signUp: async (email, password, fullName, organizationId, department) => {
+  signUp: async (email, password, fullName, organizationId, department, role = UserRole.QUALITY) => {
     const { data, error: authError } = await supabase.auth.signUp({ 
       email: email.trim().toLowerCase(), 
       password 
@@ -65,7 +65,7 @@ export const SupabaseUserService: IUserService = {
         email: email.trim().toLowerCase(),
         organization_id: organizationId || null,
         department: department || null,
-        role: 'QUALITY',
+        role: role,
         status: 'ACTIVE'
       });
     }
