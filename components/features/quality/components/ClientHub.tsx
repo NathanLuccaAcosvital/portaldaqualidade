@@ -65,7 +65,7 @@ const ClientRow: React.FC<{ client: ClientOrganization; onSelect: () => void }> 
     <td className="px-6 py-4">
       <div className="flex items-center gap-4">
         <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold border border-blue-100 shadow-sm">
-            {client.name.charAt(0)}
+            {client.name?.[0] || '?'}
         </div>
         <div>
           <p className="text-sm font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{client.name}</p>
@@ -103,7 +103,7 @@ const ClientCard: React.FC<{ client: ClientOrganization; onSelect: () => void }>
     <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:bg-blue-50 transition-colors" />
     <div className="relative z-10">
       <div className="w-14 h-14 rounded-2xl bg-[#081437] text-white flex items-center justify-center text-xl font-black mb-6 shadow-xl shadow-slate-900/20 group-hover:scale-110 transition-transform">
-        {client.name.charAt(0)}
+        {client.name?.[0] || '?'}
       </div>
       <h4 className="text-lg font-black text-[#081437] leading-tight mb-1">{client.name}</h4>
       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-6">CNPJ: {client.cnpj}</p>

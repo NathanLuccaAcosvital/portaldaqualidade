@@ -3,82 +3,126 @@ import { User, UserRole, AccountStatus } from '../../types/auth.ts';
 import { IUserService } from './interfaces.ts';
 import { supabase } from '../supabaseClient.ts';
 import { logAction } from './loggingService.ts';
-import { normalizeRole } from '../../types/index.ts';
+import { normalizeRole } from '../mappers/roleMapper.ts';
 
 /**
- * Data Mapper: Database -> Domain
+ * Mapper: Database Row (Profiles) -> Domain User (App)
  */
-const toDomainUser = (row: any, sessionEmail?: string): User => ({
-  id: row.id,
-  name: row.full_name,
-  email: row.email || sessionEmail || '',
-  role: normalizeRole(row.role),
-  organizationId: row.organization_id,
-  organizationName: row.organizations?.name,
-  status: row.status as AccountStatus,
-  department: row.department,
-  lastLogin: row.last_login
-});
+const toDomainUser = (row: any, sessionEmail?: string): User => {
+  if (!row) return null as any;
+  
+  // Trata organizações vindo como objeto ou array (comum no Supabase)
+  const orgData = Array.isArray(row.organizations) ? row.organizations[0] : row.organizations;
+
+  return {
+    id: row.id,
+    name: row.full_name || 'Usuário Sem Nome',
+    email: row.email || sessionEmail || '',
+    role: normalizeRole(row.role),
+    organizationId: row.organization_id,
+    organizationName: orgData?.name || 'Aços Vital (Interno)',
+    status: (row.status as AccountStatus) || AccountStatus.ACTIVE,
+    department: row.department,
+    lastLogin: row.last_login
+  };
+};
 
 export const SupabaseUserService: IUserService = {
   authenticate: async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
-      password
-    });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password
+      });
 
-    if (error) return { success: false, error: "Credenciais inválidas ou acesso negado." };
-
-    // Update last login timestamp in profile
-    await supabase.from('profiles').update({ last_login: new Date().toISOString() }).eq('id', data.user.id);
-    
-    return { success: true };
+      if (error) {
+        return { 
+          success: false, 
+          error: error.message === "Invalid login credentials" 
+            ? "E-mail ou senha incorretos." 
+            : "Falha na autenticação."
+        };
+      }
+      
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: "Erro de conexão." };
+    }
   },
 
   signUp: async (email, password, fullName, organizationId, department) => {
-    const { data, error: authError } = await supabase.auth.signUp({ email, password });
+    const { data, error: authError } = await supabase.auth.signUp({ 
+      email: email.trim().toLowerCase(), 
+      password 
+    });
+    
     if (authError) throw authError;
 
     if (data.user) {
-      const { error: profileError } = await supabase.from('profiles').insert({
+      await supabase.from('profiles').upsert({
         id: data.user.id,
-        full_name: fullName,
-        email: email.toLowerCase(),
+        full_name: fullName.trim(),
+        email: email.trim().toLowerCase(),
         organization_id: organizationId || null,
         department: department || null,
         role: 'CLIENT',
         status: 'ACTIVE'
       });
-      if (profileError) throw profileError;
     }
   },
 
   getCurrentUser: async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) return null;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return null;
 
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('*, organizations(name)')
-      .eq('id', session.user.id)
-      .single();
+      // Primeiro buscamos o perfil. O join de organização é feito via relação !organization_id
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*, organizations!organization_id(name)')
+        .eq('id', session.user.id)
+        .maybeSingle();
 
-    if (error || !profile) return null;
-    return toDomainUser(profile, session.user.email);
+      if (error) {
+        console.error("[UserService] Profile Fetch Error:", error.message);
+        // Fallback: Tentar buscar sem o join se o erro for de relação
+        const { data: basicProfile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .maybeSingle();
+          
+        if (!basicProfile) return null;
+        return toDomainUser(basicProfile, session.user.email);
+      }
+
+      if (!profile) return null;
+
+      return toDomainUser(profile, session.user.email);
+    } catch (e) {
+      return null;
+    }
   },
 
   logout: async () => {
     await supabase.auth.signOut();
+    localStorage.clear();
   },
 
   getUsers: async () => {
-    const { data, error } = await supabase.from('profiles').select('*, organizations(name)').order('full_name');
+    const { data, error } = await supabase
+        .from('profiles')
+        .select('*, organizations!organization_id(name)')
+        .order('full_name');
     if (error) throw error;
     return (data || []).map(p => toDomainUser(p));
   },
 
   getUsersByRole: async (role) => {
-    const { data, error } = await supabase.from('profiles').select('*').eq('role', role);
+    const { data, error } = await supabase
+        .from('profiles')
+        .select('*, organizations!organization_id(name)')
+        .eq('role', role);
     if (error) throw error;
     return (data || []).map(p => toDomainUser(p));
   },
@@ -117,11 +161,7 @@ export const SupabaseUserService: IUserService = {
       supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('status', 'ACTIVE'),
       supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'CLIENT')
     ]);
-    return { 
-      total: total.count || 0, 
-      active: active.count || 0, 
-      clients: clients.count || 0 
-    };
+    return { total: total.count || 0, active: active.count || 0, clients: clients.count || 0 };
   },
 
   generateRandomPassword: () => Math.random().toString(36).slice(-10)

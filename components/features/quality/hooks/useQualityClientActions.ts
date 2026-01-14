@@ -3,7 +3,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '../../../../context/authContext.tsx';
 import { useToast } from '../../../../context/notificationContext.tsx';
 import { useTranslation } from 'react-i18next';
-import { User, ClientOrganization, UserRole } from '../../../../types/index.ts';
+import { User, ClientOrganization, UserRole, AccountStatus } from '../../../../types/index.ts';
 import { userService, adminService } from '../../../../lib/services/index.ts';
 import { UserFormData, ClientFormData } from '../../admin/components/AdminModals.tsx';
 
@@ -22,14 +22,14 @@ export const useQualityClientActions = (onSuccess: () => void) => {
   const [userModal, setUserModal] = useState({ 
     isOpen: false, 
     editing: null as User | null,
-    data: { name: '', email: '', password: '', role: UserRole.CLIENT, organizationId: '', department: '', status: 'ACTIVE' } as UserFormData
+    data: { name: '', email: '', password: '', role: UserRole.CLIENT, organizationId: '', department: '', status: AccountStatus.ACTIVE } as UserFormData
   });
 
   // Estado do Modal de Empresa
   const [clientModal, setClientModal] = useState({
     isOpen: false,
     editing: null as ClientOrganization | null,
-    data: { name: '', cnpj: '', contractDate: '', status: 'ACTIVE', qualityAnalystId: '' } as ClientFormData
+    data: { name: '', cnpj: '', contractDate: '', status: AccountStatus.ACTIVE, qualityAnalystId: '' } as ClientFormData
   });
 
   useEffect(() => {
