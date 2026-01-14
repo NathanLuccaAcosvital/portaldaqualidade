@@ -20,25 +20,22 @@ interface LayoutProps {
 
 /**
  * Layout Principal (Orquestrador)
- * (S) Responsabilidade: Definir a grade estrutural e injetar camadas globais.
+ * Define a grade estrutural e injeta o rodapé industrial padronizado.
  */
 export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   const { user, logout } = useAuth();
   const { t } = useTranslation();
   const role = normalizeRole(user?.role);
 
-  // Hooks de Estado e Sincronização (Clean Code - Separation of Concerns)
   const layout = useLayoutState();
   const system = useSystemSync(user);
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
-      {/* Camadas Globais de Contexto */}
       <CookieBanner />
       <PrivacyModal isOpen={layout.isPrivacyOpen} onClose={layout.closePrivacy} />
       <ChangePasswordModal isOpen={layout.isChangePasswordOpen} onClose={layout.closeChangePassword} />
 
-      {/* Componente de Navegação Lateral (Desktop) */}
       <Sidebar 
         user={user} 
         role={role} 
@@ -47,10 +44,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
       />
 
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        {/* Banner de Manutenção Dinâmico */}
         <MaintenanceBanner status={system.status} isAdmin={role === UserRole.ADMIN} />
         
-        {/* Cabeçalho Adaptativo */}
         <Header 
           title={title} 
           user={user} 
@@ -60,14 +55,29 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
           onOpenMobileMenu={layout.openMobileMenu}
         />
 
-        {/* Área de Conteúdo Principal */}
-        <main className="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8 custom-scrollbar">
-          <div className="max-w-[1400px] mx-auto animate-in fade-in slide-in-from-bottom-2 duration-500">
+        <main className="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8 custom-scrollbar relative flex flex-col">
+          <div className="max-w-[1400px] w-full mx-auto animate-in fade-in slide-in-from-bottom-2 duration-500 flex-1">
             {children}
           </div>
+
+          {/* RODAPÉ INDUSTRIAL NO CONTEÚDO */}
+          <footer className="max-w-[1400px] w-full mx-auto mt-12 mb-4 px-4 py-8 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-start gap-8 sm:gap-16 opacity-40">
+              <div className="flex items-center gap-3">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                <span className="text-[10px] font-black uppercase tracking-[4px]">{t('login.monitoring')}</span>
+              </div>
+              <button 
+                onClick={layout.openPrivacy}
+                className="text-[10px] font-black uppercase tracking-[4px] hover:text-blue-600 transition-colors"
+              >
+                {t('common.privacy')}
+              </button>
+              <div className="text-[10px] font-black uppercase tracking-[4px]">
+                © 2026 {t('menu.brand').toUpperCase()}
+              </div>
+          </footer>
         </main>
 
-        {/* Navegação e Menus Mobile */}
         <MobileNavigation 
           user={user}
           isMenuOpen={layout.mobileMenuOpen}

@@ -1,4 +1,4 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { ErrorInfo, ReactNode } from 'react';
 import { AlertOctagon, RefreshCw, Home } from 'lucide-react';
 
 interface Props {
@@ -14,7 +14,7 @@ interface State {
  * Boundary de Erros do Sistema (S)
  * Única responsabilidade: Capturar exceções não tratadas e fornecer fallback seguro.
  */
-// DO: Explicitly using React.Component to ensure type resolution of this.state and this.props
+// Fix: Explicitly extending React.Component with generic types to ensure 'state', 'props', and 'setState' are correctly inherited and visible to TypeScript
 export class ErrorBoundary extends React.Component<Props, State> {
   constructor(props: Props) {
     super(props);
