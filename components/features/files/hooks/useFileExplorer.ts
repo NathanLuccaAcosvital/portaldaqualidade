@@ -13,10 +13,20 @@ interface FileExplorerOptions {
   onNavigate?: (folderId: string | null) => void;
 }
 
+interface UseFileExplorerReturn {
+  files: FileNode[];
+  loading: boolean;
+  hasMore: boolean;
+  activeFolderId: string | null;
+  handleNavigate: (folderId: string | null) => void;
+  fetchFiles: (resetPage?: boolean) => Promise<void>;
+}
+
 /**
- * Hook de Negócio: Gestão do Ciclo de Vida do Explorador de Arquivos
+ * Hook de Negócio: Gestão do Ciclo de Vida do Explorador de Arquivos.
+ * Corrigido para profundidade de 4 níveis (../../../../).
  */
-export const useFileExplorer = (options: FileExplorerOptions) => {
+export const useFileExplorer = (options: FileExplorerOptions): UseFileExplorerReturn => {
   const { user } = useAuth();
   const { t } = useTranslation();
   const { showToast } = useToast();
@@ -40,6 +50,8 @@ export const useFileExplorer = (options: FileExplorerOptions) => {
       setHasMore(result.hasMore);
       setPage(currentPage);
     } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("[useFileExplorer] Failure:", message);
       showToast(t('files.errorLoadingFiles'), 'error');
     } finally {
       setLoading(false);
