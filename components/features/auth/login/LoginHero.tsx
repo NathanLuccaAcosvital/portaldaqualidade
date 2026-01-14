@@ -23,7 +23,7 @@ export const LoginHero: React.FC = () => {
               {t('login.subtitle')}
             </span>
           </div>
-          <h1 className="text-2xl lg:text-3xl xl:text-4xl 2xl:text-7xl font-bold leading-[1.1] tracking-tighter max-w-2xl">
+          <h1 className="text-2xl lg:text-3xl xl:text-4xl 2xl:text-7xl font-bold leading-[1.1] tracking-tighter max-w-xl 2xl:max-w-2xl">
             {t('login.slogan').split(',')[0]},<br/>
             <span className="text-[#62A5FA] block mt-1 xl:mt-2 whitespace-nowrap">
               {t('login.slogan').split(',')[1]}
@@ -31,7 +31,7 @@ export const LoginHero: React.FC = () => {
           </h1>
         </div>
         
-        <p className="text-xs lg:text-sm xl:text-sm 2xl:text-xl text-slate-300 font-medium leading-relaxed max-w-xl opacity-90">
+        <p className="text-xs lg:text-sm xl:text-sm 2xl:text-xl text-slate-300 font-medium leading-relaxed max-w-xl 2xl:max-w-2xl opacity-90">
           Repositório central de documentos técnicos 
           <br className="hidden xl:block 2xl:hidden" /> 
           e certificados. Precisão industrial em cada dado.
