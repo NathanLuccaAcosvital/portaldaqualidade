@@ -11,18 +11,15 @@ interface State {
 }
 
 /**
- * Boundary de Erros do Sistema (S)
- * Única responsabilidade: Capturar exceções não tratadas e fornecer fallback seguro.
+ * Boundary de Erros do Sistema
+ * Refatorado para maior estabilidade em ambientes de desenvolvimento (HMR).
  */
-// Fix: Importing Component directly and extending it to ensure that state, props, and setState are correctly inherited and recognized by the TypeScript compiler
 export class ErrorBoundary extends Component<Props, State> {
-  // Fix: Explicitly defining the state property on the class to ensure it's recognized by the compiler and correctly typed
-  public state: State = {
-    hasError: false
-  };
-
   constructor(props: Props) {
     super(props);
+    this.state = {
+      hasError: false
+    };
   }
 
   public static getDerivedStateFromError(error: Error): State {
@@ -30,18 +27,15 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // Aqui poderíamos integrar com um serviço de telemetria como Sentry
-    console.error('[Global Error]', error, errorInfo);
+    console.error('[Critical System Error]', error, errorInfo);
   }
 
   private handleReset = () => {
-    // Fix: setState is now correctly recognized as a member of the Component base class
     this.setState({ hasError: false });
     window.location.reload();
   };
 
   public render(): ReactNode {
-    // Fix: state and props are correctly accessed as members inherited from the Component class
     if (!this.state.hasError) return this.props.children;
 
     return (
@@ -51,9 +45,9 @@ export class ErrorBoundary extends Component<Props, State> {
             <AlertOctagon size={40} />
           </div>
           
-          <h1 className="text-2xl font-black text-slate-900 tracking-tighter mb-3">Falha na Matriz de Dados</h1>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tighter mb-3">Erro de Camada Crítica</h1>
           <p className="text-slate-500 mb-10 text-sm font-medium leading-relaxed">
-            Ocorreu uma exceção crítica no processamento da página. Isso pode ser causado por instabilidade na rede ou dados corrompidos no cache.
+            Ocorreu uma exceção no processamento da interface. Se você for um desenvolvedor, verifique o console do navegador.
           </p>
           
           <div className="flex flex-col gap-3">
@@ -61,13 +55,7 @@ export class ErrorBoundary extends Component<Props, State> {
               onClick={this.handleReset}
               className="w-full flex items-center justify-center gap-3 bg-slate-900 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-[0.98] shadow-xl"
             >
-              <RefreshCw size={16} /> Reiniciar Portal
-            </button>
-            <button
-              onClick={() => window.location.href = '/'}
-              className="w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-all"
-            >
-              Ir para o Início
+              <RefreshCw size={16} /> Reiniciar Aplicação
             </button>
           </div>
         </div>
