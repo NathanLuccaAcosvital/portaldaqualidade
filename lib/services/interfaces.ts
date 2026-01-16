@@ -1,3 +1,4 @@
+
 import { 
   User, 
   ClientOrganization,
@@ -39,6 +40,9 @@ export interface DashboardStatsData {
   status: 'REGULAR' | 'PENDING' | 'CRITICAL';
   mainLabel: string;
   subLabel: string;
+  unviewedCount?: number;
+  rejectedCount?: number;
+  lastAnalysis?: string;
 }
 
 // Interface para dados brutos de organização vindo do Supabase
@@ -73,7 +77,6 @@ export interface PaginatedResponse<T> {
 
 /**
  * SERVIÇO DE INFRAESTRUTURA (STORAGE & BASE FILES)
- * Operações puras de persistência e cloud storage.
  */
 export interface IFileService {
   getRawFiles: (folderId: string | null, page?: number, pageSize?: number, searchTerm?: string) => Promise<PaginatedResponse<FileNode>>;
@@ -83,18 +86,17 @@ export interface IFileService {
   deleteFile: (user: User, fileIds: string[]) => Promise<void>;
   deleteFiles: (fileIds: string[]) => Promise<void>;
   renameFile: (user: User, fileId: string, newName: string) => Promise<void>;
-  getBreadcrumbs: (folderId: string | null) => Promise<BreadcrumbItem[]>;
+  getBreadcrumbs: (user: User, folderId: string | null) => Promise<BreadcrumbItem[]>;
   getSignedUrl: (path: string) => Promise<string>;
   getFileSignedUrl: (user: User, fileId: string) => Promise<string>;
   getAuditLogs: (user: User) => Promise<AuditLog[]>;
   getDashboardStats: (user: User) => Promise<DashboardStatsData>;
-  // Métodos antigos mantidos para compatibilidade se necessário
   uploadRaw: (user: User, blob: Blob, name: string, path: string) => Promise<string>;
   deleteRaw: (paths: string[]) => Promise<void>;
 }
 
 /**
- * SERVIÇO DE DOMÍNIO: QUALIDADE (Contexto: Analista Técnico)
+ * SERVIÇO DE DOMÍNIO: QUALIDADE
  */
 export interface IQualityService {
   getManagedPortfolio: (analystId: string) => Promise<ClientOrganization[]>;
@@ -107,21 +109,19 @@ export interface IQualityService {
 }
 
 /**
- * SERVIÇO DE DOMÍNIO: PARCEIRO (Contexto: Cliente B2B)
+ * SERVIÇO DE DOMÍNIO: PARCEIRO
  */
 export interface IPartnerService {
   getCertificates: (orgId: string, folderId: string | null, search?: string) => Promise<PaginatedResponse<FileNode>>;
-  getComplianceOverview: (orgId: string) => Promise<{ approvedCount: number; lastAnalysis: string }>;
+  getComplianceOverview: (orgId: string) => Promise<{ approvedCount: number; rejectedCount: number; unviewedCount: number; lastAnalysis: string }>;
   getRecentActivity: (orgId: string) => Promise<FileNode[]>;
   getPartnerDashboardStats: (orgId: string) => Promise<DashboardStatsData>;
-  // Fix: Added logFileView and submitClientFeedback to interface to resolve TS errors in implementations and consumers
   logFileView: (user: User, file: FileNode) => Promise<void>;
-  // Fix: Updated submitClientFeedback signature to include annotations parameter (6th argument)
   submitClientFeedback: (user: User, file: FileNode, status: QualityStatus, observations?: string, flags?: string[], annotations?: any[]) => Promise<void>;
 }
 
 /**
- * SERVIÇO DE DOMÍNIO: ADMIN (Contexto: Governança Global)
+ * SERVIÇO DE DOMÍNIO: ADMIN
  */
 export interface IAdminService {
   getSystemStatus: () => Promise<SystemStatus>;
@@ -132,7 +132,6 @@ export interface IAdminService {
   saveClient: (user: User, data: Partial<ClientOrganization>) => Promise<ClientOrganization>;
   deleteClient: (user: User, id: string) => Promise<void>;
   scheduleMaintenance: (user: User, event: Partial<MaintenanceEvent>) => Promise<MaintenanceEvent>;
-  // Métodos antigos mantidos para compatibilidade
   updateGatewayMode: (user: User, mode: SystemStatus['mode']) => Promise<void>;
   getGlobalAuditLogs: () => Promise<AuditLog[]>;
   manageUserAccess: (admin: User, targetUser: Partial<User>) => Promise<void>;

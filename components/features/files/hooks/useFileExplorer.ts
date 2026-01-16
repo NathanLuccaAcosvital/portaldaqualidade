@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../../../context/authContext.tsx';
 import { fileService } from '../../../../lib/services/index.ts';
 import { useToast } from '../../../../context/notificationContext.tsx';
@@ -11,6 +11,7 @@ interface FileExplorerOptions {
   refreshKey?: number;
   searchTerm: string;
   viewMode: 'grid' | 'list';
+  ownerId?: string | null;
 }
 
 interface UseFileExplorerReturn {
@@ -37,30 +38,46 @@ export const useFileExplorer = (options: FileExplorerOptions): UseFileExplorerRe
   const [hasMore, setHasMore] = useState(true);
   const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([]);
 
+  const fetchIdRef = useRef(0);
   const activeFolderId = options.currentFolderId; 
 
   const fetchFiles = useCallback(async (resetPage = false) => {
     if (!user) return;
     const currentPage = resetPage ? 1 : page;
+    const currentFetchId = ++fetchIdRef.current;
+    
     setLoading(true);
+    if (resetPage) setFiles([]); 
 
     try {
       const [fileResult, breadcrumbResult] = await Promise.all([
         fileService.getFiles(user, activeFolderId, currentPage, 100, options.searchTerm),
-        fileService.getBreadcrumbs(activeFolderId)
+        fileService.getBreadcrumbs(user, activeFolderId)
       ]);
       
-      setFiles(prev => resetPage ? fileResult.items : [...prev, ...fileResult.items]);
+      if (currentFetchId !== fetchIdRef.current) return;
+
+      let items = fileResult.items;
+      
+      if (options.ownerId && options.ownerId !== 'global') {
+          items = items.filter(f => f.ownerId === options.ownerId);
+      }
+
+      setFiles(prev => resetPage ? items : [...prev, ...items]);
       setHasMore(fileResult.hasMore);
       setPage(currentPage);
       setBreadcrumbs(breadcrumbResult);
     } catch (err: unknown) {
-      console.error("[useFileExplorer] Failure:", err);
-      showToast(t('files.errorLoadingFiles'), 'error');
+      if (currentFetchId === fetchIdRef.current) {
+        console.error("[useFileExplorer] Failure:", err);
+        showToast(t('files.errorLoadingFiles'), 'error');
+      }
     } finally {
-      setLoading(false);
+      if (currentFetchId === fetchIdRef.current) {
+        setLoading(false);
+      }
     }
-  }, [user, page, activeFolderId, options.searchTerm, showToast, t]);
+  }, [user, page, activeFolderId, options.searchTerm, options.ownerId, showToast, t]);
 
   const handleNavigate = useCallback((folderId: string | null) => {
     setPage(1); 
@@ -68,7 +85,9 @@ export const useFileExplorer = (options: FileExplorerOptions): UseFileExplorerRe
   }, []);
 
   const handleUploadFile = useCallback(async (fileBlob: File, fileName: string, parentId: string | null) => {
-    if (!user || !user.organizationId) {
+    const targetOwnerId = options.ownerId && options.ownerId !== 'global' ? options.ownerId : user?.organizationId;
+
+    if (!user || !targetOwnerId) {
         showToast(t('files.upload.noOrgLinked'), 'error');
         return;
     }
@@ -81,7 +100,7 @@ export const useFileExplorer = (options: FileExplorerOptions): UseFileExplorerRe
             type: fileBlob.type.startsWith('image/') ? FileType.IMAGE : FileType.PDF,
             size: `${(fileBlob.size / 1024 / 1024).toFixed(2)} MB`,
             mimeType: fileBlob.type
-        }, user.organizationId);
+        }, targetOwnerId);
         showToast(t('files.upload.success'), 'success');
         await fetchFiles(true);
     } catch (err: any) {
@@ -89,16 +108,18 @@ export const useFileExplorer = (options: FileExplorerOptions): UseFileExplorerRe
     } finally {
         setLoading(false);
     }
-  }, [user, showToast, t, fetchFiles]);
+  }, [user, options.ownerId, showToast, t, fetchFiles]);
 
   const handleCreateFolder = useCallback(async (folderName: string, parentId: string | null) => {
-    if (!user || !user.organizationId) {
+    const targetOwnerId = options.ownerId && options.ownerId !== 'global' ? options.ownerId : user?.organizationId;
+
+    if (!user || !targetOwnerId) {
       showToast(t('files.createFolder.noOrgLinked'), 'error');
       return;
     }
     setLoading(true);
     try {
-      await fileService.createFolder(user, parentId, folderName, user.organizationId);
+      await fileService.createFolder(user, parentId, folderName, targetOwnerId);
       showToast(t('files.createFolder.success'), 'success');
       await fetchFiles(true);
     } catch (err: any) {
@@ -106,7 +127,7 @@ export const useFileExplorer = (options: FileExplorerOptions): UseFileExplorerRe
     } finally {
       setLoading(false);
     }
-  }, [user, showToast, t, fetchFiles]);
+  }, [user, options.ownerId, showToast, t, fetchFiles]);
 
   const handleDeleteFiles = useCallback(async (fileIds: string[]) => {
     if (!user || fileIds.length === 0) return;

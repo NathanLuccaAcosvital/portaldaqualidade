@@ -14,7 +14,6 @@ const API_TIMEOUT = 8000;
  */
 export const SupabaseAdminService: IAdminService = {
   getSystemStatus: async () => {
-    // Fix: Wrap Supabase builder in Promise.resolve to satisfy Promise typing for withTimeout
     const fetchStatusPromise = Promise.resolve(supabase.from('system_settings').select('*').single());
     
     const result = await withTimeout(
@@ -41,6 +40,7 @@ export const SupabaseAdminService: IAdminService = {
         mode: newStatus.mode,
         message: newStatus.message,
         scheduled_start: newStatus.scheduledStart,
+        // Fix: Use correct camelCase property name 'scheduledEnd' from the SystemStatus type
         scheduled_end: newStatus.scheduledEnd,
         updated_by: user.id,
         updated_at: new Date().toISOString()
@@ -64,7 +64,6 @@ export const SupabaseAdminService: IAdminService = {
     }, action);
   },
 
-  // Mantido para compatibilidade
   updateGatewayMode: async (user, mode) => {
     await SupabaseAdminService.updateSystemStatus(user, { mode });
   },
@@ -148,7 +147,19 @@ export const SupabaseAdminService: IAdminService = {
   },
 
   saveClient: async (user, data) => {
+    const isNew = !data.id;
     const call = async () => {
+      // REGRA VITAL: Verificação de duplicidade por CNPJ
+      if (isNew) {
+        const { data: existing } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('cnpj', data.cnpj)
+          .maybeSingle();
+        
+        if (existing) throw new Error(`Já existe uma empresa registrada com o CNPJ ${data.cnpj}.`);
+      }
+
       const payload = {
         name: data.name, 
         cnpj: data.cnpj, 
@@ -156,17 +167,35 @@ export const SupabaseAdminService: IAdminService = {
         contract_date: data.contractDate,
         quality_analyst_id: data.qualityAnalystId
       };
-      const query = data.id ? supabase.from('organizations').update(payload).eq('id', data.id) : supabase.from('organizations').insert(payload);
       
-      const queryPromise = Promise.resolve(query.select().single());
-      const result = await withTimeout( 
-        queryPromise as any,
-        API_TIMEOUT,
-        "Tempo esgotado ao salvar cliente."
-      );
-      const { data: res, error } = result as PostgrestSingleResponse<any>;
-
+      const query = data.id 
+        ? supabase.from('organizations').update(payload).eq('id', data.id) 
+        : supabase.from('organizations').insert(payload);
+      
+      const { data: res, error } = await query.select().single();
       if (error) throw error;
+
+      // REGRA VITAL: Criação Garantida e Única da Pasta Raiz
+      if (isNew && res.id) {
+          // Verifica se por algum motivo técnico a pasta já existe
+          const { data: existingFolder } = await supabase
+            .from('files')
+            .select('id')
+            .eq('owner_id', res.id)
+            .is('parent_id', null)
+            .maybeSingle();
+
+          if (!existingFolder) {
+              await supabase.from('files').insert({
+                  name: res.name,
+                  type: 'FOLDER',
+                  parent_id: null,
+                  owner_id: res.id,
+                  storage_path: 'system/folder',
+                  updated_at: new Date().toISOString()
+              });
+          }
+      }
       
       return {
         id: res.id,
@@ -182,13 +211,7 @@ export const SupabaseAdminService: IAdminService = {
 
   deleteClient: async (user, id) => {
     const action = async () => {
-      const deletePromise = Promise.resolve(supabase.from('organizations').delete().eq('id', id));
-      const result = await withTimeout( 
-        deletePromise as any,
-        API_TIMEOUT,
-        "Tempo esgotado ao deletar cliente."
-      );
-      const { error } = result as PostgrestResponse<null>;
+      const { error } = await supabase.from('organizations').delete().eq('id', id);
       if (error) throw error;
     };
 
@@ -200,20 +223,14 @@ export const SupabaseAdminService: IAdminService = {
   },
 
   scheduleMaintenance: async (user, event) => {
-     const insertPromise = Promise.resolve(supabase.from('maintenance_events').insert({
+     const { data, error } = await supabase.from('maintenance_events').insert({
          title: event.title,
          scheduled_date: event.scheduledDate,
          duration_minutes: event.durationMinutes,
          description: event.description,
          status: 'SCHEDULED',
          created_by: user.id
-       }).select().single());
-     const result = await withTimeout( 
-       insertPromise as any,
-       API_TIMEOUT,
-       "Tempo esgotado ao agendar manutenção."
-     );
-     const { data, error } = result as PostgrestSingleResponse<any>;
+       }).select().single();
      
      if (error) throw error;
      return {
@@ -227,7 +244,6 @@ export const SupabaseAdminService: IAdminService = {
      } as MaintenanceEvent;
   },
 
-  // Métodos antigos para IAdminService
   getGlobalAuditLogs: async () => {
     const { data, error } = await supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(200);
     if (error) throw error;

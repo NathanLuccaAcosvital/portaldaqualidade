@@ -1,3 +1,4 @@
+
 import React, { Suspense } from 'react';
 import { Layout } from '../components/layout/MainLayout.tsx';
 import { useAdminPage } from '../components/features/admin/hooks/useAdminPage.ts';
@@ -34,7 +35,7 @@ const AdminPage: React.FC = () => {
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
           <Suspense fallback={<TabLoadingIndicator />}>
             {activeTab === 'overview' && <AdminOverview stats={adminStats} />}
-            {activeTab === 'users' && <AdminUsers setIsSaving={setIsSaving} />}
+            {activeTab === 'users' && <AdminUsers setIsSaving={setIsSaving} isSaving={isSaving} />}
             {activeTab === 'logs' && <AdminLogs />}
             {activeTab === 'settings' && systemStatus && (
               <AdminSettings 

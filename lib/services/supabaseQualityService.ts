@@ -17,11 +17,13 @@ const toDomainFile = (row: any): FileNode => ({
 });
 
 export const SupabaseQualityService: IQualityService = {
-  getManagedPortfolio: async (analystId) => {
+  getManagedPortfolio: async (_analystId) => {
+    // QUALITY agora vê todas as organizações para supervisão global
     const { data, error } = await supabase
       .from('organizations')
       .select('*')
-      .eq('quality_analyst_id', analystId);
+      .order('name');
+      
     if (error) throw error;
     return data.map(org => ({
       id: org.id,
@@ -33,15 +35,13 @@ export const SupabaseQualityService: IQualityService = {
     }));
   },
 
-  getPendingInspections: async (analystId) => {
-    const { data: orgs } = await supabase.from('organizations').select('id').eq('quality_analyst_id', analystId);
-    const orgIds = orgs?.map(o => o.id) || [];
-
+  getPendingInspections: async (_analystId) => {
+    // Busca pendências de todas as organizações
     const { data, error } = await supabase
       .from('files')
       .select('*')
-      .in('owner_id', orgIds)
-      .eq('metadata->>status', QualityStatus.PENDING);
+      .eq('metadata->>status', QualityStatus.PENDING)
+      .neq('type', 'FOLDER');
     
     if (error) throw error;
     return (data || []).map(toDomainFile);
@@ -66,8 +66,10 @@ export const SupabaseQualityService: IQualityService = {
   getTechnicalAuditLogs: async (analystId, filters) => {
     let query = supabase
       .from('audit_logs')
-      .select('*')
-      .eq('user_id', analystId);
+      .select('*');
+
+    // Se for um analista vendo seus próprios logs ou global se for admin (ajustável)
+    if (analystId) query = query.eq('user_id', analystId);
 
     if (filters?.search) {
       query = query.or(`action.ilike.%${filters.search}%,target.ilike.%${filters.search}%`);
@@ -103,18 +105,11 @@ export const SupabaseQualityService: IQualityService = {
     }));
   },
 
-  getPortfolioFileExplorer: async (analystId, folderId) => {
-    // Busca organizações do analista
-    const { data: orgs } = await supabase.from('organizations').select('id').eq('quality_analyst_id', analystId);
-    const orgIds = orgs?.map(o => o.id) || [];
-
+  getPortfolioFileExplorer: async (_analystId, folderId) => {
     let query = supabase.from('files').select('*', { count: 'exact' });
     
     if (folderId) query = query.eq('parent_id', folderId);
     else query = query.is('parent_id', null);
-
-    // RLS deve cuidar disso, mas aplicamos filtro explícito para garantir contexto
-    query = query.in('owner_id', orgIds);
 
     const { data, count, error } = await query.order('name');
     if (error) throw error;
@@ -126,11 +121,11 @@ export const SupabaseQualityService: IQualityService = {
     };
   },
 
-  getManagedClients: async (analystId, filters, page = 1) => {
+  getManagedClients: async (_analystId, filters, page = 1) => {
+    // QUALITY agora vê todos os clientes na listagem
     let query = supabase
       .from('organizations')
-      .select('*', { count: 'exact' })
-      .eq('quality_analyst_id', analystId);
+      .select('*', { count: 'exact' });
 
     if (filters.search) query = query.ilike('name', `%${filters.search}%`);
     if (filters.status && filters.status !== 'ALL') query = query.eq('status', filters.status);

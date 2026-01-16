@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient.ts';
 import { userService } from '../lib/services/index.ts';
@@ -44,13 +45,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           isInitialSyncComplete: true,
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Critical Auth Sync Error:", error);
       if (mounted.current) {
         setState(s => ({ 
           ...s, 
           isLoading: false, 
-          error: "Conexão perdida com o Gateway de Segurança.", 
+          error: "Não foi possível validar sua identidade técnica.", 
           isInitialSyncComplete: true 
         }));
       }
@@ -66,9 +67,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     mounted.current = true;
     refreshAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-        setState(s => ({ ...s, isLoading: true, isInitialSyncComplete: false }));
+    // Inscrição para eventos de auth globais (login/logout/token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.debug(`[Auth Event] ${event}`);
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
         refreshAuth();
       }
     });
@@ -80,16 +82,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [refreshAuth]);
 
   const login = async (email: string, password: string) => {
-    setState(s => ({ ...s, isLoading: true }));
+    setState(s => ({ ...s, isLoading: true, error: null }));
     const result = await userService.authenticate(email, password);
     if (!result.success) {
       setState(s => ({ ...s, isLoading: false, error: result.error || 'Autenticação recusada' }));
     }
+    // O onAuthStateChange cuidará do refreshAuth se o login for bem sucedido
     return result;
   };
 
   const logout = async () => {
     await userService.logout();
+    setState({
+        user: null,
+        systemStatus: null,
+        isLoading: false,
+        error: null,
+        isInitialSyncComplete: true
+    });
     window.location.href = '/'; 
   };
 

@@ -8,10 +8,11 @@ import { UserFormData } from '../components/AdminModals.tsx';
 
 interface UseAdminUserProps {
   setIsSaving: (state: boolean) => void;
+  isSavingGlobal: boolean;
   restrictedToRole?: UserRole;
 }
 
-export const useAdminUserManagement = ({ setIsSaving, restrictedToRole }: UseAdminUserProps) => {
+export const useAdminUserManagement = ({ setIsSaving, isSavingGlobal, restrictedToRole }: UseAdminUserProps) => {
   const { user: currentUser } = useAuth();
   const { showToast } = useToast();
 
@@ -39,20 +40,16 @@ export const useAdminUserManagement = ({ setIsSaving, restrictedToRole }: UseAdm
     if (!currentUser) return;
     setIsLoadingUsers(true);
     try {
-      // 1. Sincroniza usuários e empresas
       const [users, clients] = await Promise.all([
         userService.getUsers(),
         adminService.getClients({ status: 'ACTIVE' }, 1, 1000),
       ]);
       
-      console.debug(`[Security Check] Usuários permitidos pela RLS: ${users.length}`);
-      console.debug(`[Security Check] Empresas atribuídas na carteira: ${clients.items.length}`);
-      
       setUsersList(users);
       setClientsList(clients.items);
     } catch (err: any) {
       console.error("[Data Sync Error]", err);
-      showToast("Falha na comunicação com a base de dados. Verifique sua RLS.", 'error');
+      showToast("Falha na comunicação com a base de dados.", 'error');
     } finally {
       setIsLoadingUsers(false);
     }
@@ -62,72 +59,53 @@ export const useAdminUserManagement = ({ setIsSaving, restrictedToRole }: UseAdm
     loadData();
   }, [loadData]);
 
-  // Regra de Negócio: Identificar IDs das empresas sob gestão deste usuário
-  const managedOrgIds = useMemo(() => {
-    if (!currentUser) return [];
-    const role = normalizeRole(currentUser.role);
-    
-    // Admins gerenciam tudo
-    if (role === UserRole.ADMIN) return clientsList.map(c => c.id);
-    
-    // Analistas gerenciam apenas empresas onde seu ID consta como quality_analyst_id
-    if (role === UserRole.QUALITY) {
-      return clientsList
-        .filter(c => String(c.qualityAnalystId) === String(currentUser.id))
-        .map(c => c.id);
-    }
-    
-    return [];
-  }, [clientsList, currentUser]);
-
   const filteredUsers = useMemo(() => {
     const search = searchTerm.toLowerCase();
-    const role = currentUser ? normalizeRole(currentUser.role) : null;
-    const isQualityAnalyst = role === UserRole.QUALITY;
 
     return usersList.filter(u => {
-      // 1. Filtro de Arquivamento (Tag Visual)
       const isArchived = u.department === 'PENDING_DELETION';
       if (viewMode === 'ACTIVE' && isArchived) return false;
       if (viewMode === 'ARCHIVED' && !isArchived) return false;
 
-      // 2. Filtro de Role
       const uRole = normalizeRole(u.role);
       const targetRole = restrictedToRole || roleFilter;
       const matchesRole = targetRole === 'ALL' || uRole === normalizeRole(targetRole);
       if (!matchesRole) return false;
 
-      // 3. Filtro de Portfólio (Controle de Visibilidade Frontend)
-      if (isQualityAnalyst) {
-        // Se for analista, só mostra usuários que pertencem às empresas que ele gere
-        if (!u.organizationId || !managedOrgIds.includes(u.organizationId)) return false;
-      }
-
-      // 4. Filtro de Busca por Texto
       const matchesSearch = 
         u.name.toLowerCase().includes(search) || 
         u.email.toLowerCase().includes(search);
         
       return matchesSearch;
     });
-  }, [usersList, searchTerm, roleFilter, viewMode, restrictedToRole, currentUser, managedOrgIds]);
+  }, [usersList, searchTerm, roleFilter, viewMode, restrictedToRole]);
 
   const handleSaveUser = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSavingGlobal) return;
+
     setIsSaving(true);
     try {
+      const targetOrgId = (formData.organizationId && formData.organizationId.trim() !== "") 
+        ? formData.organizationId 
+        : undefined;
+
       if (!editingUser) {
         await userService.signUp(
           formData.email, 
           formData.password || '', 
           formData.name, 
-          formData.organizationId || undefined,
+          targetOrgId,
           formData.department,
           formData.role
         );
         showToast("Novo parceiro credenciado com sucesso!", 'success');
       } else {
-        await userService.saveUser({ ...editingUser, ...formData } as User);
+        await userService.saveUser({ 
+          ...editingUser, 
+          ...formData,
+          organizationId: targetOrgId 
+        } as User);
         showToast("Perfil de acesso atualizado.", 'success');
       }
       setIsUserModalOpen(false);
@@ -137,10 +115,10 @@ export const useAdminUserManagement = ({ setIsSaving, restrictedToRole }: UseAdm
     } finally {
       setIsSaving(false);
     }
-  }, [editingUser, formData, showToast, setIsSaving, loadData]);
+  }, [editingUser, formData, showToast, setIsSaving, loadData, isSavingGlobal]);
 
   const handleFlagDeletion = useCallback(async (userId: string) => {
-    if (!currentUser) return;
+    if (!currentUser || isSavingGlobal) return;
     setIsSaving(true);
     try {
         await userService.flagUserForDeletion(userId, currentUser);
@@ -152,7 +130,7 @@ export const useAdminUserManagement = ({ setIsSaving, restrictedToRole }: UseAdm
     } finally {
         setIsSaving(false);
     }
-  }, [currentUser, setIsSaving, showToast, loadData]);
+  }, [currentUser, setIsSaving, showToast, loadData, isSavingGlobal]);
 
   const openUserModal = useCallback((target?: User) => {
     if (target) {
@@ -195,7 +173,6 @@ export const useAdminUserManagement = ({ setIsSaving, restrictedToRole }: UseAdm
     handleFlagDeletion,
     formData,
     setFormData,
-    // No modal, só permite selecionar empresas que o analista gere
-    clientsList: clientsList.filter(c => isUserModalOpen ? managedOrgIds.includes(c.id) : true),
+    clientsList: clientsList
   };
 };

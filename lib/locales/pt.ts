@@ -167,7 +167,7 @@ export const pt = {
   cookie: {
     title: "Privacidade e Segurança",
     text: "Utilizamos cookies essenciais para garantir a segurança da autenticação e a integridade dos certificados técnicos. Ao continuar navegando no portal da Aços Vital, você concorda com nossa política de gestão de dados.",
-    accept: "Aceptar e Continuar"
+    accept: "Aceitar e Continuar"
   },
   menu: {
     dashboard: "Início",

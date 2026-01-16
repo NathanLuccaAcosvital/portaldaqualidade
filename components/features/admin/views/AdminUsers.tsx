@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Search, UserPlus, Loader2, ShieldCheck, Archive, Users as UsersIcon, Briefcase } from 'lucide-react';
@@ -8,12 +9,13 @@ import { UserRole } from '../../../../types/index.ts';
 
 interface AdminUsersProps {
   setIsSaving: React.Dispatch<React.SetStateAction<boolean>>;
+  isSaving?: boolean;
   restrictedToRole?: UserRole; 
 }
 
-export const AdminUsers: React.FC<AdminUsersProps> = ({ setIsSaving, restrictedToRole }) => {
+export const AdminUsers: React.FC<AdminUsersProps> = ({ setIsSaving, isSaving = false, restrictedToRole }) => {
   const { t } = useTranslation();
-  const management = useAdminUserManagement({ setIsSaving, restrictedToRole });
+  const management = useAdminUserManagement({ setIsSaving, isSavingGlobal: isSaving, restrictedToRole });
 
   return (
     <div className="flex-1 flex flex-col min-h-0 space-y-4">
@@ -26,6 +28,7 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({ setIsSaving, restrictedT
         formData={management.formData}
         setFormData={management.setFormData}
         organizations={management.clientsList}
+        isSaving={isSaving}
       />
 
       <UsersControlPanel 

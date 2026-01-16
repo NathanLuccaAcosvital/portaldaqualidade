@@ -1,22 +1,18 @@
 
 import { supabase } from '../supabaseClient.ts';
-import { FileNode, FileType, BreadcrumbItem, AuditLog, User } from '../../types/index.ts';
+import { FileNode, FileType, BreadcrumbItem, AuditLog, User, UserRole } from '../../types/index.ts';
 import { logAction as internalLogAction } from './loggingService.ts';
 import { IFileService, PaginatedResponse, DashboardStatsData } from './interfaces.ts';
 
 const STORAGE_BUCKET = 'certificates';
 
-/**
- * Sanitiza um segmento do caminho para ser compatível com sistemas de arquivos e S3.
- * Remove acentos, substitui espaços por underscores e remove caracteres não alfanuméricos (exceto ponto e hífen).
- */
 const sanitizeFilePathSegment = (segment: string): string => {
   return segment
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // Remove acentos
-    .replace(/\s+/g, '_')           // Espaços para _
-    .replace(/[^a-zA-Z0-9.\-_]/g, '') // Remove caracteres especiais perigosos
-    .replace(/_{2,}/g, '_');        // Remove underscores duplicados
+    .replace(/[\u0300-\u036f]/g, "") 
+    .replace(/\s+/g, '_')           
+    .replace(/[^a-zA-Z0-9.\-_]/g, '') 
+    .replace(/_{2,}/g, '_');        
 };
 
 const toDomainFile = (row: any): FileNode => ({
@@ -57,6 +53,18 @@ export const SupabaseFileService: IFileService = {
   },
 
   getFiles: async (user, folderId, page = 1, pageSize = 50, searchTerm = ''): Promise<PaginatedResponse<FileNode>> => {
+    if (user.role === UserRole.CLIENT) {
+        let query = supabase.from('files').select('*', { count: 'exact' }).eq('owner_id', user.organizationId);
+        if (folderId) query = query.eq('parent_id', folderId);
+        else query = query.is('parent_id', null);
+        if (searchTerm) query = query.ilike('name', `%${searchTerm}%`);
+        
+        const from = (page - 1) * pageSize;
+        const { data, count, error } = await query.range(from, from + pageSize - 1).order('type', { ascending: false }).order('name', { ascending: true });
+        if (error) throw error;
+        return { items: (data || []).map(toDomainFile), total: count || 0, hasMore: (count || 0) > from + pageSize };
+    }
+    
     return SupabaseFileService.getRawFiles(folderId, page, pageSize, searchTerm);
   },
 
@@ -77,12 +85,9 @@ export const SupabaseFileService: IFileService = {
   uploadFile: async (user, fileData, ownerId) => {
     if (!fileData.fileBlob) throw new Error("Blob não fornecido.");
     
-    // Sanitização técnica do caminho físico (Key) do Storage
     const sanitizedFileName = sanitizeFilePathSegment(fileData.name);
     const folderPath = fileData.parentId || 'root';
     const uniqueId = crypto.randomUUID();
-    
-    // Caminho limpo: org-uuid/folder-uuid/file-uuid-name.ext
     const filePath = `${ownerId}/${folderPath}/${uniqueId}-${sanitizedFileName}`;
     
     const { data: uploadData, error: uploadError } = await supabase.storage
@@ -95,7 +100,7 @@ export const SupabaseFileService: IFileService = {
     if (uploadError) throw uploadError;
 
     const { data, error } = await supabase.from('files').insert({
-        name: fileData.name, // Mantém o nome original com espaços/acentos para exibição na UI
+        name: fileData.name, 
         type: fileData.type,
         parent_id: fileData.parentId,
         owner_id: ownerId,
@@ -107,7 +112,6 @@ export const SupabaseFileService: IFileService = {
     }).select().single();
 
     if (error) {
-      // Rollback no storage se falhar a inserção no banco
       await supabase.storage.from(STORAGE_BUCKET).remove([filePath]);
       throw error;
     }
@@ -120,8 +124,12 @@ export const SupabaseFileService: IFileService = {
   },
 
   deleteFiles: async (fileIds) => {
+    if (!fileIds || fileIds.length === 0) return;
     const { error } = await supabase.from('files').delete().in('id', fileIds);
-    if (error) throw error;
+    if (error) {
+        console.error("[SupabaseFileService] Delete Error:", error.message);
+        throw new Error("Falha ao remover registros do banco de dados.");
+    }
   },
 
   renameFile: async (user, fileId, newName) => {
@@ -129,15 +137,36 @@ export const SupabaseFileService: IFileService = {
     if (error) throw error;
   },
 
-  getBreadcrumbs: async (currentFolderId): Promise<BreadcrumbItem[]> => {
-    const breadcrumbs: BreadcrumbItem[] = [{ id: null, name: 'Início' }];
+  getBreadcrumbs: async (user, currentFolderId): Promise<BreadcrumbItem[]> => {
+    const breadcrumbs: BreadcrumbItem[] = [];
+    const isClient = user.role === UserRole.CLIENT;
+    const companyName = user.organizationName || 'Organização';
+    
     let folderId = currentFolderId;
     while (folderId) {
-      const { data, error } = await supabase.from('files').select('id, name, parent_id').eq('id', folderId).single();
+      const { data, error } = await supabase.from('files').select('id, name, parent_id, owner_id').eq('id', folderId).single();
+      
       if (error || !data) break;
+
+      const isCompanyRoot = isClient && data.owner_id === user.organizationId && data.parent_id === null;
+      
+      if (isCompanyRoot) {
+          // Quando estiver na raiz da empresa, o nome da pasta em si vira 'Início'
+          // E o item nulo vira o Nome da Empresa
+          breadcrumbs.unshift({ id: data.id, name: 'Início' });
+          breadcrumbs.unshift({ id: null, name: companyName }); 
+          break;
+      }
+
       breadcrumbs.unshift({ id: data.id, name: data.name });
       folderId = data.parent_id;
     }
+
+    // Caso não esteja em nenhuma pasta (fallback)
+    if (breadcrumbs.length === 0) {
+        breadcrumbs.unshift({ id: null, name: companyName });
+    }
+
     return breadcrumbs;
   },
 
@@ -191,7 +220,6 @@ export const SupabaseFileService: IFileService = {
     };
   },
 
-  // Métodos antigos mantidos para compatibilidade
   uploadRaw: async (user, blob, name, path) => {
     const { error } = await supabase.storage.from(STORAGE_BUCKET).upload(path, blob);
     if (error) throw error;

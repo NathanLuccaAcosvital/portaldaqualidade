@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../../context/authContext.tsx';
 import { partnerService, fileService } from '../../../../lib/services/index.ts';
-import { FileNode, BreadcrumbItem } from '../../../../types/index.ts';
+import { FileNode, BreadcrumbItem, User } from '../../../../types/index.ts';
 
 export const usePartnerCertificates = (folderId: string | null, searchTerm: string) => {
   const { user } = useAuth();
@@ -17,7 +17,8 @@ export const usePartnerCertificates = (folderId: string | null, searchTerm: stri
       const [filesRes, statsRes, breadcrumbsRes] = await Promise.all([
         partnerService.getCertificates(user.organizationId, folderId, searchTerm),
         partnerService.getComplianceOverview(user.organizationId),
-        fileService.getBreadcrumbs(folderId)
+        // Fix: Added 'user' as the first argument to getBreadcrumbs to match IFileService interface
+        fileService.getBreadcrumbs(user as User, folderId)
       ]);
       setFiles(filesRes.items);
       setStats(statsRes);
@@ -27,7 +28,7 @@ export const usePartnerCertificates = (folderId: string | null, searchTerm: stri
     } finally {
       setIsLoading(false);
     }
-  }, [user?.organizationId, folderId, searchTerm]);
+  }, [user, folderId, searchTerm]);
 
   useEffect(() => {
     loadData();

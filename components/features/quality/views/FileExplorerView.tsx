@@ -11,6 +11,7 @@ import { FilePreviewModal } from '../../files/FilePreviewModal.tsx';
 import { CreateFolderModal } from '../../files/modals/CreateFolderModal.tsx';
 import { RenameModal } from '../../files/modals/RenameModal.tsx';
 import { UploadFileModal } from '../../files/modals/UploadFileModal.tsx';
+import { DeleteConfirmationModal } from '../../files/modals/DeleteConfirmationModal.tsx';
 import { ProcessingOverlay } from '../components/ViewStates.tsx';
 import { fileService } from '../../../../lib/services/index.ts';
 import { useToast } from '../../../../context/notificationContext.tsx';
@@ -39,6 +40,11 @@ export const FileExplorerView: React.FC<FileExplorerViewProps> = ({ orgId }) => 
   const [isRenaming, setIsRenaming] = useState(false);
   const [fileToRename, setFileToRename] = useState<FileNode | null>(null);
   
+  // Estados para Exclusão
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [idsToDelete, setIdsToDelete] = useState<string[]>([]);
+  
   // Estados para Upload
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -51,7 +57,8 @@ export const FileExplorerView: React.FC<FileExplorerViewProps> = ({ orgId }) => 
   } = useFileExplorer({
     currentFolderId,
     searchTerm,
-    viewMode
+    viewMode,
+    ownerId: orgId === 'global' ? null : orgId
   });
 
   const handleNavigate = useCallback((folderId: string | null) => {
@@ -87,14 +94,6 @@ export const FileExplorerView: React.FC<FileExplorerViewProps> = ({ orgId }) => 
   const handleUploadAction = async (file: File, fileName: string) => {
     setIsUploading(true);
     try {
-      // Se estivermos em uma visão de cliente específica, usamos o orgId dela
-      // Caso contrário (visão global), usamos a organização do próprio usuário (Vital)
-      const targetOrg = orgId && orgId !== 'global' ? orgId : user?.organizationId;
-      
-      if (!targetOrg) {
-        throw new Error("Organização alvo não identificada.");
-      }
-
       await handleUploadFile(file, fileName, currentFolderId);
       setIsUploadModalOpen(false);
     } catch (error: any) {
@@ -135,24 +134,34 @@ export const FileExplorerView: React.FC<FileExplorerViewProps> = ({ orgId }) => 
     setIsRenameModalOpen(true);
   };
 
-  const handleQualityDelete = async () => {
-    if (!user || selectedFileIds.length === 0) return;
+  const openDeleteModal = (ids: string[]) => {
+    if (!user || ids.length === 0) return;
     
-    const targets = files.filter(f => selectedFileIds.includes(f.id));
-    const canDeleteAll = targets.every(f => f.metadata?.status === QualityStatus.TO_DELETE || f.type === FileType.FOLDER);
-
-    if (!canDeleteAll) {
-      showToast("Apenas pastas vazias ou arquivos marcados como 'APAGAR' podem ser removidos.", "warning");
-      return;
+    // Verificação de Segurança Vital: Impedir exclusão de pasta raiz
+    const targets = files.filter(f => ids.includes(f.id));
+    const hasRootFolder = targets.some(f => f.type === FileType.FOLDER && f.parentId === null);
+    
+    if (hasRootFolder) {
+        showToast("Proteção de Integridade: Pastas raiz de empresas não podem ser removidas.", "warning");
+        return;
     }
 
-    if (window.confirm(`Deseja remover permanentemente ${targets.length} item(s)?`)) {
-        try {
-            await handleDeleteFiles(selectedFileIds);
-            setSelectedFileIds([]);
-        } catch (e) {
-            showToast("Falha ao limpar arquivos.", "error");
-        }
+    setIdsToDelete(ids);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDeletion = async () => {
+    setIsDeleting(true);
+    try {
+        await handleDeleteFiles(idsToDelete);
+        setIsDeleteModalOpen(false);
+        setSelectedFileIds([]);
+        showToast("Recursos removidos permanentemente.", "success");
+    } catch (e) {
+        showToast("Falha ao sincronizar exclusão. Verifique conexões.", "error");
+    } finally {
+        setIsDeleting(false);
+        setIdsToDelete([]);
     }
   };
 
@@ -191,11 +200,21 @@ export const FileExplorerView: React.FC<FileExplorerViewProps> = ({ orgId }) => 
         currentName={fileToRename?.name || ''}
       />
 
-      {(loading || isCreatingFolder || isRenaming || isUploading) && (
+      <DeleteConfirmationModal 
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleConfirmDeletion}
+        isDeleting={isDeleting}
+        itemCount={idsToDelete.length}
+        hasFolder={files.filter(f => idsToDelete.includes(f.id)).some(f => f.type === FileType.FOLDER)}
+      />
+
+      {(loading || isCreatingFolder || isRenaming || isUploading || isDeleting) && (
         <ProcessingOverlay message={
           isCreatingFolder ? "Sincronizando nova estrutura..." : 
           isRenaming ? "Atualizando identificador..." : 
           isUploading ? "Transmitindo arquivo para nuvem..." :
+          isDeleting ? "Removendo recursos do servidor..." :
           t('files.processingFiles')
         } />
       )}
@@ -208,7 +227,7 @@ export const FileExplorerView: React.FC<FileExplorerViewProps> = ({ orgId }) => 
         onUploadClick={() => setIsUploadModalOpen(true)} 
         onCreateFolderClick={() => setIsCreateFolderModalOpen(true)}
         selectedCount={selectedFileIds.length}
-        onDeleteSelected={handleQualityDelete} 
+        onDeleteSelected={() => openDeleteModal(selectedFileIds)} 
         onRenameSelected={() => selectedFilesData.length === 1 && triggerRename(selectedFilesData[0])}
         onDownloadSelected={() => {
            if (selectedFilesData.length === 1) handleDownloadSingleFile(selectedFilesData[0]);
@@ -232,7 +251,7 @@ export const FileExplorerView: React.FC<FileExplorerViewProps> = ({ orgId }) => 
         onFileSelectForPreview={handleFileSelectForPreview}
         onDownloadFile={handleDownloadSingleFile}
         onRenameFile={triggerRename}
-        onDeleteFile={() => {}}
+        onDeleteFile={(id) => openDeleteModal([id])}
         viewMode={viewMode}
         userRole={UserRole.QUALITY}
       />

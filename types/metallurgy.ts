@@ -1,3 +1,4 @@
+
 import { ID, ISO8601Date } from './common.ts';
 import { QualityStatus } from './enums.ts';
 
@@ -23,14 +24,24 @@ export interface SteelBatchMetadata {
   batchNumber: string;
   grade: string;        // ex: SAE 1020, ASTM A36
   invoiceNumber: string;
+  
+  // Análise Documental (Técnica Vital)
   status: QualityStatus;
   rejectionReason?: string;
-  clientObservations?: string; // Novo: Feedback do cliente
-  clientFlags?: string[];      // Novo: Tags de erro (Químico, Mecânico, etc)
   inspectedAt?: ISO8601Date;
   inspectedBy?: string;
-  viewedAt?: ISO8601Date;      // Novo: Data da primeira abertura pelo cliente
-  viewedBy?: string;           // Novo: Nome do usuário cliente que visualizou
+
+  // Análise Física (Recebimento Cliente)
+  physicalStatus?: QualityStatus;
+  physicalInspectedAt?: ISO8601Date;
+  physicalInspectedBy?: string;
+  physicalEvidenceUrl?: string;
+  physicalObservations?: string;
+
+  clientObservations?: string; 
+  clientFlags?: string[];      
+  viewedAt?: ISO8601Date;      
+  viewedBy?: string;           
   chemicalComposition: ChemicalComposition;
   mechanicalProperties: MechanicalProperties;
 }

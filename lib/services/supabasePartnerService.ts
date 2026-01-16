@@ -40,27 +40,32 @@ export const SupabasePartnerService: IPartnerService = {
   },
 
   getComplianceOverview: async (orgId) => {
-    const { data: counts, error } = await supabase
+    const { data: files, error } = await supabase
       .from('files')
-      .select('metadata->status')
+      .select('metadata')
       .eq('owner_id', orgId)
       .neq('type', 'FOLDER');
 
     if (error) throw error;
 
-    const approvedCount = counts?.filter(c => (c as any).status === QualityStatus.APPROVED).length || 0;
-    const rejectedCount = counts?.filter(c => (c as any).status === QualityStatus.REJECTED).length || 0;
-    const pendingCount = counts?.filter(c => (c as any).status === QualityStatus.PENDING).length || 0;
+    const approvedCount = files?.filter(f => f.metadata?.status === QualityStatus.APPROVED).length || 0;
+    const rejectedCount = files?.filter(f => f.metadata?.status === QualityStatus.REJECTED).length || 0;
+    
+    // DOCUMENTOS NOVOS: Aprovados mas ainda não visualizados pelo cliente
+    const unviewedCount = files?.filter(f => 
+        f.metadata?.status === QualityStatus.APPROVED && !f.metadata?.viewedAt
+    ).length || 0;
 
     return {
       approvedCount,
       rejectedCount,
-      pendingCount,
+      unviewedCount,
       lastAnalysis: new Date().toISOString()
     } as any;
   },
 
   getRecentActivity: async (orgId) => {
+    // Garantindo que APENAS arquivos apareçam (exclui pastas da timeline)
     const { data, error } = await supabase
       .from('files')
       .select('*')
@@ -75,23 +80,30 @@ export const SupabasePartnerService: IPartnerService = {
   getPartnerDashboardStats: async (orgId): Promise<DashboardStatsData> => {
     const { data: files, error } = await supabase
       .from('files')
-      .select('metadata->status')
+      .select('metadata')
       .eq('owner_id', orgId)
       .neq('type', 'FOLDER');
 
     if (error) throw error;
 
     const total = files?.length || 0;
-    const ok = files?.filter(f => (f as any).status === QualityStatus.APPROVED).length || 0;
-    const rejected = files?.filter(f => (f as any).status === QualityStatus.REJECTED).length || 0;
+    const approved = files?.filter(f => f.metadata?.status === QualityStatus.APPROVED).length || 0;
+    const rejected = files?.filter(f => f.metadata?.status === QualityStatus.REJECTED).length || 0;
+    const unviewed = files?.filter(f => f.metadata?.status === QualityStatus.APPROVED && !f.metadata?.viewedAt).length || 0;
+
+    // Ação Requerida = Itens que precisam de atenção do cliente (Novos + Contestados)
+    const totalActions = rejected + unviewed;
 
     return {
       mainValue: total,
-      subValue: ok,
-      pendingValue: rejected,
-      status: rejected > 0 ? 'CRITICAL' : (total - ok > 0 ? 'PENDING' : 'REGULAR'),
+      subValue: approved,
+      pendingValue: totalActions,
+      unviewedCount: unviewed,
+      rejectedCount: rejected,
+      status: totalActions > 0 ? 'CRITICAL' : 'REGULAR',
       mainLabel: 'Certificados Recebidos',
-      subLabel: 'Aprovados em Compliance'
+      subLabel: 'Aprovados em Compliance',
+      lastAnalysis: new Date().toISOString()
     };
   },
 
@@ -114,7 +126,6 @@ export const SupabasePartnerService: IPartnerService = {
   },
 
   submitClientFeedback: async (user: User, file: FileNode, status: QualityStatus, observations?: string, flags?: string[], annotations?: any[]) => {
-    // 1. Atualizar Metadados do Arquivo Original
     const updatedMetadata = {
       ...file.metadata,
       status,
@@ -127,8 +138,6 @@ export const SupabasePartnerService: IPartnerService = {
     const { error: fileUpdateError } = await supabase.from('files').update({ metadata: updatedMetadata }).eq('id', file.id);
     if (fileUpdateError) throw fileUpdateError;
 
-    // 2. Criar Registro de Revisão Detalhado (Tabela file_reviews)
-    // Persiste os desenhos separadamente para não inflar o JSONB do metadado de arquivos
     const { error: reviewError } = await supabase.from('file_reviews').insert({
       file_id: file.id,
       author_id: user.id,

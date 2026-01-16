@@ -81,10 +81,10 @@ const Breadcrumbs: React.FC<{ breadcrumbs: BreadcrumbItem[]; onNavigate: (id: st
   <nav className="flex items-center gap-1 overflow-x-auto no-scrollbar py-1 pr-4" aria-label="Navegação de Pastas">
     {breadcrumbs.map((item, index) => {
       const isLast = index === breadcrumbs.length - 1;
-      const isRoot = item.id === null;
+      const isRoot = index === 0; // O primeiro item é sempre o ponto de partida (Raiz ou Empresa)
       
       return (
-        <div key={item.id || 'root'} className="flex items-center shrink-0">
+        <div key={item.id || `breadcrumb-${index}`} className="flex items-center shrink-0">
           <button 
             onClick={() => onNavigate(item.id)}
             className={`
@@ -95,7 +95,7 @@ const Breadcrumbs: React.FC<{ breadcrumbs: BreadcrumbItem[]; onNavigate: (id: st
             `}
           >
             {isRoot && <Home size={14} className={isLast ? 'text-white' : 'text-blue-400'} />}
-            {isRoot ? t('dashboard.kpi.libraryLabel') : item.name}
+            {item.name}
           </button>
           {!isLast && (
             <ChevronRight size={14} className="text-slate-300 mx-1" />
@@ -183,11 +183,11 @@ const SelectedActions: React.FC<{
   const isSingleFileSelected = isSingleSelected && selectedFilesData[0]?.type !== FileType.FOLDER;
   const isClient = userRole === UserRole.CLIENT;
   
-  // Regra Vital: Apenas Staff pode renomear.
-  // Se for uma pasta, ela deve ter um parentId (não pode ser pasta raiz de cliente).
-  const canRenameSelected = isSingleSelected && !isClient && (
-    selectedFilesData[0].type !== FileType.FOLDER || selectedFilesData[0].parentId !== null
-  );
+  // Regra Vital: Apenas Staff (Admin/Quality) pode gerenciar.
+  const canRenameSelected = isSingleSelected && !isClient;
+  
+  // CORREÇÃO: Impede deleção se houver uma pasta raiz no lote selecionado
+  const hasRootFolder = selectedFilesData.some(f => f.type === FileType.FOLDER && f.parentId === null);
 
   return (
     <div className="flex items-center gap-2 bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100 animate-in zoom-in-95">
@@ -205,8 +205,9 @@ const SelectedActions: React.FC<{
           )}
           <button 
             onClick={onDelete} 
-            className="p-1.5 text-red-500 hover:bg-red-100 rounded-lg transition-colors"
-            title={t('files.delete.button')}
+            disabled={hasRootFolder}
+            className={`p-1.5 rounded-lg transition-colors ${hasRootFolder ? 'text-slate-300 cursor-not-allowed' : 'text-red-500 hover:bg-red-100'}`}
+            title={hasRootFolder ? "Pasta raiz não pode ser excluída" : t('files.delete.button')}
           >
             <Trash2 size={16} />
           </button>
