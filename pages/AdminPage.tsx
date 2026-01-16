@@ -1,4 +1,3 @@
-
 import React, { Suspense } from 'react';
 import { Layout } from '../components/layout/MainLayout.tsx';
 import { useAdminPage } from '../components/features/admin/hooks/useAdminPage.ts';
@@ -23,7 +22,7 @@ const AdminPage: React.FC = () => {
 
   return (
     <Layout title={t('menu.management')}>
-      <div className="flex flex-col gap-6 pb-20 relative">
+      <div className="flex flex-col gap-6 pb-20 relative h-full">
         <TabNavigation tabs={tabs} activeTab={activeTab} onTabChange={changeTab} />
 
         {isSaving && (

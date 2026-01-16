@@ -1,132 +1,104 @@
 
-import { User, UserRole, AccountStatus } from '../../types/auth.ts';
-import { IUserService } from './interfaces.ts';
+// Fix: Import types from their respective source modules
+import { User } from '../../types/auth.ts';
+import { UserRole, AccountStatus } from '../../types/enums.ts';
+import { IUserService, RawProfile } from './interfaces.ts';
 import { supabase } from '../supabaseClient.ts';
 import { logAction } from './loggingService.ts';
 import { normalizeRole } from '../mappers/roleMapper.ts';
+import { withTimeout } from '../utils/apiUtils.ts';
+import { withAuditLog } from '../utils/auditLogWrapper.ts';
+import { AuthError } from '@supabase/supabase-js';
 
-/**
- * Mapper: Database Row (Profiles) -> Domain User (App)
- */
-const toDomainUser = (row: any, sessionEmail?: string): User => {
-  if (!row) return null as any;
-  
-  // Trata organizações vindo como objeto ou array (comum no Supabase)
+const API_TIMEOUT = 10000;
+
+const normalizeAuthError = (error: AuthError): string => {
+  const msg = error.message.toLowerCase();
+  if (msg.includes("invalid login credentials")) return "auth.errors.invalidCredentials";
+  if (msg.includes("too many requests")) return "auth.errors.tooManyRequests";
+  return "auth.errors.unexpected";
+};
+
+const toDomainUser = (row: any, sessionUser?: any): User | null => {
+  if (!row) return null;
   const orgData = Array.isArray(row.organizations) ? row.organizations[0] : row.organizations;
+  
+  const isPendingDeletion = sessionUser?.user_metadata?.is_pending_deletion === true;
 
   return {
     id: row.id,
     name: row.full_name || 'Usuário Sem Nome',
-    email: row.email || sessionEmail || '',
+    email: row.email || sessionUser?.email || '',
     role: normalizeRole(row.role),
-    organizationId: row.organization_id,
+    organizationId: row.organization_id || undefined,
     organizationName: orgData?.name || 'Aços Vital (Interno)',
     status: (row.status as AccountStatus) || AccountStatus.ACTIVE,
-    department: row.department,
-    lastLogin: row.last_login
+    department: row.department || 'CLIENT_INTERNAL',
+    lastLogin: row.last_login || undefined,
+    isPendingDeletion
   };
 };
 
 export const SupabaseUserService: IUserService = {
   authenticate: async (email, password) => {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
-        password
-      });
-
-      if (error) {
-        return { 
-          success: false, 
-          error: error.message === "Invalid login credentials" 
-            ? "E-mail ou senha incorretos." 
-            : "Falha na autenticação."
-        };
-      }
-      
-      return { success: true };
-    } catch (e) {
-      return { success: false, error: "Erro de conexão." };
-    }
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password
+    });
+    if (error) return { success: false, error: normalizeAuthError(error) };
+    return { success: true };
   },
 
-  signUp: async (email, password, fullName, organizationId, department, role = UserRole.QUALITY) => {
-    // 1. Auth SignUp (Supabase Auth)
-    const { data, error: authError } = await supabase.auth.signUp({ 
-      email: email.trim().toLowerCase(), 
-      password 
-    });
-    
-    if (authError) throw authError;
-
-    // 2. Profile Creation (Public Profiles Table)
-    if (data.user) {
-      const { error: profileError } = await supabase.from('profiles').upsert({
-        id: data.user.id,
-        full_name: fullName.trim(),
-        email: email.trim().toLowerCase(),
-        organization_id: organizationId || null,
-        department: department || null,
-        role: role,
-        status: 'ACTIVE'
-      });
-
-      if (profileError) {
-        console.error("Erro ao criar perfil:", profileError);
-        throw new Error("Usuário criado, mas houve um erro ao configurar o perfil.");
+  signUp: async (email, password, fullName, organizationId, userType, role = UserRole.CLIENT) => {
+    const { data, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName,
+          user_type: userType,
+          is_pending_deletion: false
+        }
       }
-    }
+    });
+
+    if (authError) throw new Error(authError.message);
+    if (!data.user) throw new Error("Falha ao criar credenciais de acesso.");
+
+    const { error: profileError } = await supabase.from('profiles').upsert({
+      id: data.user.id,
+      full_name: fullName,
+      email: email,
+      role: role,
+      organization_id: organizationId || null,
+      department: userType,
+      status: 'ACTIVE'
+    });
+
+    if (profileError) throw profileError;
+
+    await logAction(null, 'USER_CREATED', email, 'AUTH', 'INFO', 'SUCCESS', { userType, role, organizationId });
   },
 
   getCurrentUser: async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return null;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return null;
 
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*, organizations!organization_id(name)')
-        .eq('id', session.user.id)
-        .maybeSingle();
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*, organizations!organization_id(name)')
+      .eq('id', session.user.id)
+      .maybeSingle();
 
-      if (error) {
-        const { data: basicProfile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .maybeSingle();
-          
-        if (!basicProfile) return null;
-        return toDomainUser(basicProfile, session.user.email);
-      }
-
-      if (!profile) return null;
-
-      return toDomainUser(profile, session.user.email);
-    } catch (e) {
-      return null;
-    }
-  },
-
-  logout: async () => {
-    await supabase.auth.signOut();
-    localStorage.clear();
+    return toDomainUser(profile, session.user);
   },
 
   getUsers: async () => {
     const { data, error } = await supabase
-        .from('profiles')
-        .select('*, organizations!organization_id(name)')
-        .order('full_name');
-    if (error) throw error;
-    return (data || []).map(p => toDomainUser(p));
-  },
+      .from('profiles')
+      .select('*, organizations!organization_id(name)')
+      .order('full_name');
 
-  getUsersByRole: async (role) => {
-    const { data, error } = await supabase
-        .from('profiles')
-        .select('*, organizations!organization_id(name)')
-        .eq('role', role);
     if (error) throw error;
     return (data || []).map(p => toDomainUser(p));
   },
@@ -135,12 +107,37 @@ export const SupabaseUserService: IUserService = {
     const { error } = await supabase.from('profiles').update({
       full_name: u.name,
       role: u.role,
-      organization_id: u.organizationId,
+      organization_id: u.organizationId || null,
+      department: u.department, 
       status: u.status,
-      department: u.department,
       updated_at: new Date().toISOString()
     }).eq('id', u.id);
+
     if (error) throw error;
+    
+    await logAction(null, 'USER_UPDATED', u.email, 'DATA', 'INFO', 'SUCCESS', { id: u.id });
+  },
+
+  flagUserForDeletion: async (userId: string, adminUser: User) => {
+    const { error } = await supabase.from('profiles').update({
+      status: 'INACTIVE', 
+      department: 'PENDING_DELETION' 
+    }).eq('id', userId);
+
+    if (error) throw error;
+
+    await logAction(adminUser, 'USER_FLAGGED_DELETION', userId, 'SECURITY', 'WARNING', 'SUCCESS');
+  },
+
+  logout: async () => {
+    await supabase.auth.signOut();
+    localStorage.clear();
+  },
+
+  getUsersByRole: async (role) => {
+    const { data, error } = await supabase.from('profiles').select('*, organizations!organization_id(name)').eq('role', role);
+    if (error) throw error;
+    return (data || []).map(p => toDomainUser(p));
   },
 
   changePassword: async (userId, current, newPass) => {
@@ -149,14 +146,8 @@ export const SupabaseUserService: IUserService = {
     return true;
   },
 
-  deleteUser: async (id) => {
-    const { error } = await supabase.from('profiles').delete().eq('id', id);
-    if (error) throw error;
-  },
-
-  blockUserById: async (admin, target, reason) => {
-    await supabase.from('profiles').update({ status: 'BLOCKED' }).eq('id', target);
-    await logAction(admin, 'SEC_USER_BLOCKED', target, 'SECURITY', 'CRITICAL', 'SUCCESS', { reason });
+  deleteUser: async (_userId: string) => {
+    throw new Error("A exclusão direta foi desativada por política de segurança. Use 'Sinalizar para Exclusão'.");
   },
 
   getUserStats: async () => {
@@ -165,7 +156,5 @@ export const SupabaseUserService: IUserService = {
       supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('status', 'ACTIVE')
     ]);
     return { total: total.count || 0, active: active.count || 0, clients: 0 };
-  },
-
-  generateRandomPassword: () => Math.random().toString(36).slice(-10)
+  }
 };

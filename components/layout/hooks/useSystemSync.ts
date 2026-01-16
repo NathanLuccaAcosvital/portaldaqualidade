@@ -1,29 +1,40 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { adminService, notificationService } from '../../../lib/services/index.ts';
 import { SystemStatus, User } from '../../../types/index.ts';
 
-export const useSystemSync = (user: User | null) => {
-  const [status, setStatus] = useState<SystemStatus>({ mode: 'ONLINE' });
+/**
+ * Hook de sincronização de estado do sistema e notificações.
+ * Agora recebe o status inicial do sistema via props, delegando a busca inicial
+ * para um componente pai (AuthContext neste caso) para evitar duplicação.
+ */
+export const useSystemSync = (user: User | null, initialSystemStatus: SystemStatus | null) => {
+  const [status, setStatus] = useState<SystemStatus>(initialSystemStatus || { mode: 'ONLINE' });
   const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    // Initialize status from props if available
+    if (initialSystemStatus) {
+      setStatus(initialSystemStatus);
+    }
+  }, [initialSystemStatus]);
 
   useEffect(() => {
     if (!user) return;
     
-    const syncData = async () => {
-      const [sysStatus, count] = await Promise.all([
-        adminService.getSystemStatus(),
-        notificationService.getUnreadCount(user)
-      ]);
-      setStatus(sysStatus);
-      setUnreadCount(count);
+    // Função para buscar a contagem de não lidas e atualizar
+    const syncNotifications = async () => {
+      if (user) { // Verifica se user ainda existe no contexto (previne erros após logout)
+        const count = await notificationService.getUnreadCount(user);
+        setUnreadCount(count);
+      }
     };
 
-    syncData();
+    syncNotifications();
 
-    // Inscrição em tempo real (O)
+    // Inscrição em tempo real para status do sistema e notificações
     const unsubStatus = adminService.subscribeToSystemStatus(setStatus);
-    const unsubNotifs = notificationService.subscribeToNotifications(syncData);
+    const unsubNotifs = notificationService.subscribeToNotifications(syncNotifications);
     
     return () => { 
       unsubStatus(); 

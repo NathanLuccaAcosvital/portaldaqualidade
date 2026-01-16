@@ -1,63 +1,117 @@
 
-import React from 'react';
-import { Folder, FileText, ChevronRight } from 'lucide-react';
-import { FileNode, FileType } from '../../../../types/index.ts';
+import React, { useState, useRef, useEffect } from 'react';
+import { Folder, FileText, ChevronRight, CheckSquare, Square, Download, Trash2, Edit2, MoreVertical, Eye, AlertTriangle, ArrowUpRight } from 'lucide-react';
+import { FileNode, FileType, UserRole, QualityStatus } from '../../../../types/index.ts';
 import { FileStatusBadge } from './FileStatusBadge.tsx';
+import { useTranslation } from 'react-i18next';
 
 interface FileViewProps {
   files: FileNode[];
   onNavigate: (id: string | null) => void;
-  onSelect?: (file: FileNode | null) => void;
+  onSelectFileForPreview: (file: FileNode | null) => void;
+  selectedFileIds: string[];
+  onToggleFileSelection: (fileId: string) => void;
+  onDownload: (file: FileNode) => void;
+  onRename: (file: FileNode) => void;
+  onDelete: (fileId: string) => void;
+  userRole: UserRole;
 }
 
-export const FileListView: React.FC<FileViewProps> = ({ files, onNavigate, onSelect }) => (
-  <div className="space-y-1">
-    {files.map((file) => (
-      <div 
-        key={file.id} 
-        onClick={() => file.type === FileType.FOLDER ? onNavigate(file.id) : onSelect?.(file)}
-        className="group flex items-center justify-between p-3 hover:bg-slate-50 rounded-xl cursor-pointer border border-transparent hover:border-slate-200 transition-all"
-        role="button"
-        tabIndex={0}
-      >
-        <div className="flex items-center gap-4">
-          <div className={`p-2 rounded-lg ${file.type === FileType.FOLDER ? 'bg-blue-50 text-blue-500' : 'bg-red-50 text-red-500'}`}>
-            {file.type === FileType.FOLDER ? <Folder size={20} /> : <FileText size={20} />}
-          </div>
-          <div>
-            <p className="text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors">{file.name}</p>
-            <div className="flex items-center gap-3 mt-0.5">
-              <span className="text-[10px] text-slate-400 font-mono">{file.size || '--'}</span>
-              {file.type !== FileType.FOLDER && <FileStatusBadge status={file.metadata?.status} />}
+export const FileListView: React.FC<FileViewProps> = ({ 
+  files, onNavigate, onSelectFileForPreview, selectedFileIds, onToggleFileSelection, onDownload, onRename, onDelete, userRole 
+}) => {
+  const { t } = useTranslation();
+  return (
+    <div className="space-y-1">
+      {files.map((file) => {
+        const isSelected = selectedFileIds.includes(file.id);
+        const isToDelete = file.metadata?.status === QualityStatus.TO_DELETE;
+        const isFolder = file.type === FileType.FOLDER;
+
+        return (
+          <div 
+            key={file.id} 
+            className={`group flex items-center h-14 p-2 rounded-xl transition-all 
+                        ${isSelected ? 'bg-blue-50 ring-1 ring-blue-100' : 'hover:bg-slate-50'}`}
+            onDoubleClick={() => isFolder ? onNavigate(file.id) : onSelectFileForPreview(file)}
+          >
+            <div 
+              className="flex-1 flex items-center gap-4 min-w-0 cursor-pointer px-2"
+              onClick={() => isFolder ? onNavigate(file.id) : onSelectFileForPreview(file)}
+            >
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border
+                ${isFolder ? 'bg-blue-50 border-blue-100 text-blue-600' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
+                {isFolder ? <Folder size={20} fill="currentColor" className="opacity-20" /> : <FileText size={20} />}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className={`text-xs font-bold truncate ${isToDelete ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
+                  {file.name}
+                </p>
+                <div className="flex items-center gap-3 mt-0.5">
+                  <span className="text-[10px] text-slate-400 font-mono">{file.size || (isFolder ? '--' : 'PDF')}</span>
+                  {!isFolder && <FileStatusBadge status={file.metadata?.status} />}
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pr-4">
+               {isFolder ? <ChevronRight size={16} className="text-slate-300" /> : <ArrowUpRight size={16} className="text-blue-500" />}
             </div>
           </div>
-        </div>
-        <ChevronRight size={16} className="text-slate-300 group-hover:text-blue-400 group-hover:translate-x-1 transition-all" />
-      </div>
-    ))}
-  </div>
-);
+        );
+      })}
+    </div>
+  );
+};
 
-export const FileGridView: React.FC<FileViewProps> = ({ files, onNavigate, onSelect }) => (
-  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-    {files.map((file) => (
-      <div 
-        key={file.id}
-        onClick={() => file.type === FileType.FOLDER ? onNavigate(file.id) : onSelect?.(file)}
-        className="flex flex-col items-center p-4 hover:bg-slate-50 rounded-2xl cursor-pointer border border-transparent hover:border-slate-200 transition-all text-center group"
-        role="button"
-        tabIndex={0}
-      >
-        <div className={`w-16 h-16 mb-3 flex items-center justify-center rounded-2xl shadow-sm transition-all group-hover:scale-110 ${file.type === FileType.FOLDER ? 'bg-blue-50 text-blue-500' : 'bg-red-50 text-red-500'}`}>
-          {file.type === FileType.FOLDER ? <Folder size={32} /> : <FileText size={32} />}
-        </div>
-        <p className="text-xs font-bold text-slate-700 line-clamp-2 leading-tight group-hover:text-blue-600">{file.name}</p>
-        {file.type !== FileType.FOLDER && (
-          <div className="mt-2 scale-75">
-            <FileStatusBadge status={file.metadata?.status} />
+export const FileGridView: React.FC<FileViewProps> = ({ 
+  files, onNavigate, onSelectFileForPreview, selectedFileIds, onToggleFileSelection, onDownload, onRename, onDelete, userRole 
+}) => {
+  const { t } = useTranslation();
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+      {files.map((file) => {
+        const isSelected = selectedFileIds.includes(file.id);
+        const isToDelete = file.metadata?.status === QualityStatus.TO_DELETE;
+        const isFolder = file.type === FileType.FOLDER;
+
+        return (
+          <div 
+            key={file.id}
+            onDoubleClick={() => isFolder ? onNavigate(file.id) : onSelectFileForPreview(file)}
+            className={`relative flex flex-col group p-4 rounded-[2rem] cursor-pointer border-2 transition-all 
+                        ${isSelected ? 'bg-blue-50 border-blue-200' : 'bg-white border-transparent hover:border-slate-100 hover:shadow-xl hover:-translate-y-1'}`}
+          >
+            <div 
+              className="flex flex-col items-center text-center w-full pt-2"
+              onClick={() => isFolder ? onNavigate(file.id) : onSelectFileForPreview(file)}
+            >
+              <div className={`w-16 h-16 mb-4 flex items-center justify-center rounded-[1.5rem] shadow-sm transition-transform group-hover:scale-110 
+                               ${isFolder ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-slate-50 text-slate-500 border border-slate-100'}`}>
+                {isFolder ? <Folder size={32} fill="currentColor" className="opacity-10" /> : <FileText size={32} />}
+              </div>
+              <p className={`text-[11px] font-black uppercase tracking-tight line-clamp-2 leading-tight px-1 mb-2 ${isToDelete ? 'text-slate-300 line-through' : 'text-slate-700'}`}>
+                {file.name}
+              </p>
+              {!isFolder && (
+                <div className="mt-auto pt-2 border-t border-slate-50 w-full flex justify-center scale-90">
+                  <FileStatusBadge status={file.metadata?.status} />
+                </div>
+              )}
+              {isFolder && (
+                <div className="mt-auto text-[9px] font-black text-slate-300 uppercase tracking-widest">Acessar Pasta</div>
+              )}
+            </div>
+            
+            <button 
+              className="absolute top-4 right-4 p-2 text-slate-300 hover:text-blue-600 transition-colors"
+              onClick={(e) => { e.stopPropagation(); onToggleFileSelection(file.id); }}
+            >
+              {isSelected ? <CheckSquare size={16} className="text-blue-500" /> : <Square size={16} />}
+            </button>
           </div>
-        )}
-      </div>
-    ))}
-  </div>
-);
+        );
+      })}
+    </div>
+  );
+};

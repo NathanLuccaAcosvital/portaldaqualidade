@@ -12,9 +12,12 @@ interface State {
 
 /**
  * Boundary de Erros do Sistema
- * Refatorado para maior estabilidade em ambientes de desenvolvimento (HMR).
+ * Refatorado para maior estabilidade e compatibilidade com TypeScript.
  */
+// Fix: Extending Component directly to ensure proper property resolution and inheritance by TypeScript
 export class ErrorBoundary extends Component<Props, State> {
+  
+  // Fix: Explicitly initialize state property using constructor and super(props) to ensure members like setState and props are available
   constructor(props: Props) {
     super(props);
     this.state = {
@@ -22,20 +25,25 @@ export class ErrorBoundary extends Component<Props, State> {
     };
   }
 
+  // Mandatory static method for error boundaries to update state
   public static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
   }
 
+  // Catching errors for logging and analytics
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('[Critical System Error]', error, errorInfo);
   }
 
+  // Handler to reset error state and reload the application
   private handleReset = () => {
-    this.setState({ hasError: false });
+    // Fix: Accessing setState inherited from Component base class
+    this.setState({ hasError: false, error: undefined });
     window.location.reload();
   };
 
   public render(): ReactNode {
+    // Fix: Accessing state and props members inherited from Component base class
     if (!this.state.hasError) return this.props.children;
 
     return (
@@ -53,7 +61,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <div className="flex flex-col gap-3">
             <button
               onClick={this.handleReset}
-              className="w-full flex items-center justify-center gap-3 bg-slate-900 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-[0.98] shadow-xl"
+              className="w-full flex items-center justify-center gap-3 bg-slate-900 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-98 shadow-xl"
             >
               <RefreshCw size={16} /> Reiniciar Aplicação
             </button>

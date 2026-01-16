@@ -1,47 +1,48 @@
-
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useAuth } from '../context/authContext.tsx';
 import { adminService } from '../lib/services/index.ts';
-import { UserRole, SystemStatus, normalizeRole } from '../types/index.ts';
+import { UserRole, normalizeRole, SystemStatus } from '../types/index.ts';
 import { MaintenanceScreen } from '../components/common/MaintenanceScreen.tsx';
 
-/**
- * Middleware de Controle de Disponibilidade do Sistema.
- * Otimizado para não causar flicker com o Auth.
- */
 export const MaintenanceMiddleware: React.FC = () => {
-  const { user, isLoading: authLoading } = useAuth();
-  const [status, setStatus] = useState<SystemStatus | null>(null);
-  const isFetching = useRef(false);
-
-  const fetchStatus = useCallback(async () => {
-    if (isFetching.current) return;
-    isFetching.current = true;
-    try {
-      const s = await adminService.getSystemStatus();
-      setStatus(s);
-    } finally {
-      isFetching.current = false;
-    }
-  }, []);
+  const { user, isLoading: isAuthLoading, systemStatus: initialStatus } = useAuth();
+  const [liveStatus, setLiveStatus] = useState<SystemStatus | null>(initialStatus);
+  const isSubscribed = useRef(false);
 
   useEffect(() => {
-    fetchStatus();
-    const unsubscribe = adminService.subscribeToSystemStatus(setStatus);
-    return () => unsubscribe();
-  }, [fetchStatus]);
+    if (initialStatus) {
+        setLiveStatus(initialStatus);
+    }
+  }, [initialStatus]);
 
-  // Se o Auth ainda está carregando ou o status do sistema ainda não veio,
-  // não renderizamos nada para o AuthProvider gerenciar o splash screen único.
-  if (authLoading || !status) return null;
+  useEffect(() => {
+    if (!user || isSubscribed.current) return;
 
-  const isAuthorizedToBypass = user && normalizeRole(user.role) === UserRole.ADMIN;
-  const isSystemLocked = status.mode === 'MAINTENANCE';
+    isSubscribed.current = true;
+    const unsubscribe = adminService.subscribeToSystemStatus((newStatus) => {
+      setLiveStatus(newStatus);
+    });
 
-  if (isSystemLocked && !isAuthorizedToBypass) {
-    return <MaintenanceScreen status={status} onRetry={fetchStatus} />;
+    return () => {
+      isSubscribed.current = false;
+      unsubscribe();
+    };
+  }, [user]);
+
+  // Se o Auth ainda está carregando o perfil, não fazemos nada para não interferir no loader global
+  if (isAuthLoading) return null; 
+
+  const currentStatus = liveStatus || initialStatus; 
+
+  // Só bloqueia se explicitamente estiver em modo manutenção
+  if (currentStatus?.mode === 'MAINTENANCE') {
+    const role = user ? normalizeRole(user.role) : UserRole.CLIENT;
+    // Admins pulam a tela de manutenção para poderem consertar o sistema
+    if (role !== UserRole.ADMIN) {
+      return <MaintenanceScreen status={currentStatus} onRetry={() => window.location.reload()} />;
+    }
   }
 
-  return <Outlet context={{ systemStatus: status }} />;
+  return <Outlet context={{ systemStatus: currentStatus }} />;
 };

@@ -1,131 +1,110 @@
-
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient.ts';
 import { userService } from '../lib/services/index.ts';
-import { User, UserRole, normalizeRole } from '../types/index.ts';
+import { appService } from '../lib/services/appService.tsx';
+import { User, SystemStatus } from '../types/index.ts';
 
 interface AuthState {
   user: User | null;
   isLoading: boolean;
+  systemStatus: SystemStatus | null;
   error: string | null;
+  isInitialSyncComplete: boolean;
 }
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
-  refreshProfile: () => Promise<User | null>;
+  retryInitialSync: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-/**
- * AuthProvider Remasterizado
- * Gerencia a sessão do Supabase e sincroniza o perfil do usuário (Profiles).
- */
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, setState] = useState<AuthState>({
     user: null,
     isLoading: true,
-    error: null
+    systemStatus: null,
+    error: null,
+    isInitialSyncComplete: false,
   });
 
-  const initialized = useRef(false);
+  const mounted = useRef(true);
 
-  const syncUserProfile = useCallback(async () => {
+  const refreshAuth = useCallback(async () => {
     try {
-      const currentUser = await userService.getCurrentUser();
+      const data = await appService.getInitialData();
       
-      if (currentUser) {
-        // Força a normalização para garantir que 'CLIENT' ou 'CLIENTE' vire UserRole.CLIENT
-        currentUser.role = normalizeRole(currentUser.role);
+      if (mounted.current) {
+        setState({
+          user: data.user,
+          systemStatus: data.systemStatus,
+          isLoading: false,
+          error: null,
+          isInitialSyncComplete: true,
+        });
       }
-
-      setState(prev => ({ 
-        ...prev, 
-        user: currentUser, 
-        isLoading: false,
-        error: null 
-      }));
-      
-      return currentUser;
-    } catch (error: any) {
-      console.error("[AuthContext] Erro na Sincronização:", error);
-      setState(prev => ({ ...prev, user: null, isLoading: false, error: error.message }));
-      return null;
+    } catch (error) {
+      console.error("Critical Auth Sync Error:", error);
+      if (mounted.current) {
+        setState(s => ({ 
+          ...s, 
+          isLoading: false, 
+          error: "Conexão perdida com o Gateway de Segurança.", 
+          isInitialSyncComplete: true 
+        }));
+      }
     }
   }, []);
 
+  const retryInitialSync = useCallback(async () => {
+    setState(s => ({ ...s, isLoading: true, error: null, isInitialSyncComplete: false }));
+    await refreshAuth();
+  }, [refreshAuth]);
+
   useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
+    mounted.current = true;
+    refreshAuth();
 
-    const initAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        await syncUserProfile();
-      } else {
-        setState(prev => ({ ...prev, isLoading: false }));
-      }
-    };
-
-    initAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-        if (session) await syncUserProfile();
-      } else if (event === 'SIGNED_OUT') {
-        setState({ user: null, isLoading: false, error: null });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        setState(s => ({ ...s, isLoading: true, isInitialSyncComplete: false }));
+        refreshAuth();
       }
     });
 
-    return () => subscription.unsubscribe();
-  }, [syncUserProfile]);
+    return () => {
+      mounted.current = false;
+      subscription.unsubscribe();
+    };
+  }, [refreshAuth]);
 
   const login = async (email: string, password: string) => {
-    setState(prev => ({ ...prev, isLoading: true, error: null }));
-    try {
-      const authResult = await userService.authenticate(email, password);
-      if (!authResult.success) {
-        setState(prev => ({ ...prev, isLoading: false, error: authResult.error }));
-        return authResult;
-      }
-      await syncUserProfile();
-      return { success: true };
-    } catch (err: any) {
-      const msg = err.message || "Falha na autenticação.";
-      setState(prev => ({ ...prev, isLoading: false, error: msg }));
-      return { success: false, error: msg };
+    setState(s => ({ ...s, isLoading: true }));
+    const result = await userService.authenticate(email, password);
+    if (!result.success) {
+      setState(s => ({ ...s, isLoading: false, error: result.error || 'Autenticação recusada' }));
     }
+    return result;
   };
 
   const logout = async () => {
-    setState(prev => ({ ...prev, isLoading: true }));
-    try {
-      await userService.logout();
-    } finally {
-      setState({ user: null, isLoading: false, error: null });
-      window.location.hash = '#/login';
-    }
+    await userService.logout();
+    window.location.href = '/'; 
   };
 
-  const contextValue = useMemo(() => ({
-    ...state,
-    login,
-    logout,
-    refreshProfile: syncUserProfile
-  }), [state, syncUserProfile]);
+  const value = useMemo(() => ({ 
+    ...state, 
+    login, 
+    logout, 
+    retryInitialSync 
+  }), [state, retryInitialSync]);
 
-  return (
-    <AuthContext.Provider value={contextValue}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth deve ser utilizado dentro de um AuthProvider');
-  }
+  if (context === undefined) throw new Error('useAuth deve ser usado dentro de AuthProvider');
   return context;
 };

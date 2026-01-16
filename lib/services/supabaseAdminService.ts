@@ -1,23 +1,37 @@
 
-import { IAdminService, AdminStatsData, PaginatedResponse } from './interfaces.ts';
+import { IAdminService, AdminStatsData, PaginatedResponse, RawClientOrganization } from './interfaces.ts';
 import { supabase } from '../supabaseClient.ts';
 import { SystemStatus, MaintenanceEvent } from '../../types/system.ts';
-import { ClientOrganization } from '../../types/auth.ts';
+import { ClientOrganization, User } from '../../types/index.ts';
 import { withAuditLog } from '../utils/auditLogWrapper.ts';
+import { withTimeout } from '../utils/apiUtils.ts';
+import { PostgrestResponse, PostgrestSingleResponse } from '@supabase/supabase-js';
+
+const API_TIMEOUT = 8000;
 
 /**
  * Implementação Supabase para Gestão Administrativa.
  */
 export const SupabaseAdminService: IAdminService = {
   getSystemStatus: async () => {
-    const { data, error } = await supabase.from('system_settings').select('*').single();
+    // Fix: Wrap Supabase builder in Promise.resolve to satisfy Promise typing for withTimeout
+    const fetchStatusPromise = Promise.resolve(supabase.from('system_settings').select('*').single());
+    
+    const result = await withTimeout(
+      fetchStatusPromise as any, 
+      API_TIMEOUT, 
+      "Tempo esgotado ao buscar status do sistema."
+    );
+    const { data, error } = result as PostgrestSingleResponse<any>;
+
     if (error || !data) return { mode: 'ONLINE' };
+    
     return {
       mode: data.mode,
       message: data.message,
-      scheduledStart: data.scheduled_start,
-      scheduledEnd: data.scheduled_end,
-      updatedBy: data.updated_by
+      scheduledStart: data.scheduled_start, 
+      scheduledEnd: data.scheduled_end,     
+      updatedBy: data.updated_by            
     };
   },
 
@@ -33,7 +47,14 @@ export const SupabaseAdminService: IAdminService = {
       }).eq('id', 1).select().single();
       
       if (error) throw error;
-      return data as SystemStatus;
+      
+      return {
+        mode: data.mode,
+        message: data.message,
+        scheduledStart: data.scheduled_start,
+        scheduledEnd: data.scheduled_end,
+        updatedBy: data.updated_by
+      } as SystemStatus;
     };
 
     return await withAuditLog(user, 'SYS_STATUS_CHANGE', { 
@@ -43,11 +64,23 @@ export const SupabaseAdminService: IAdminService = {
     }, action);
   },
 
+  // Mantido para compatibilidade
+  updateGatewayMode: async (user, mode) => {
+    await SupabaseAdminService.updateSystemStatus(user, { mode });
+  },
+
   subscribeToSystemStatus: (listener) => {
     const channel = supabase
       .channel('system_state')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'system_settings' }, payload => {
-        listener(payload.new as SystemStatus);
+        const data = payload.new as any;
+        listener({
+          mode: data.mode,
+          message: data.message,
+          scheduledStart: data.scheduled_start,
+          scheduledEnd: data.scheduled_end,
+          updatedBy: data.updated_by
+        });
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -86,15 +119,18 @@ export const SupabaseAdminService: IAdminService = {
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
 
-    const { data, count, error } = await query
-      .range(from, to)
-      .order('name');
+    const queryPromise = Promise.resolve(query.range(from, to).order('name'));
+    const result = await withTimeout( 
+      queryPromise as any,
+      API_TIMEOUT,
+      "Tempo esgotado ao carregar clientes."
+    );
+    const { data, count, error } = result as PostgrestResponse<RawClientOrganization>;
 
     if (error) throw error;
 
     return {
       items: (data || []).map(c => {
-        // Tratar o retorno do join que pode vir como objeto ou array
         const profileData = Array.isArray(c.profiles) ? c.profiles[0] : c.profiles;
         return {
           id: c.id, 
@@ -102,6 +138,7 @@ export const SupabaseAdminService: IAdminService = {
           cnpj: c.cnpj || '00.000.000/0000-00', 
           status: c.status, 
           contractDate: c.contract_date,
+          qualityAnalystId: c.quality_analyst_id || undefined,
           qualityAnalystName: profileData?.full_name || 'N/A'
         };
       }),
@@ -113,20 +150,45 @@ export const SupabaseAdminService: IAdminService = {
   saveClient: async (user, data) => {
     const call = async () => {
       const payload = {
-        name: data.name, cnpj: data.cnpj, status: data.status,
-        contract_date: data.contractDate, quality_analyst_id: data.qualityAnalystId
+        name: data.name, 
+        cnpj: data.cnpj, 
+        status: data.status,
+        contract_date: data.contractDate,
+        quality_analyst_id: data.qualityAnalystId
       };
       const query = data.id ? supabase.from('organizations').update(payload).eq('id', data.id) : supabase.from('organizations').insert(payload);
-      const { data: res, error } = await query.select().single();
+      
+      const queryPromise = Promise.resolve(query.select().single());
+      const result = await withTimeout( 
+        queryPromise as any,
+        API_TIMEOUT,
+        "Tempo esgotado ao salvar cliente."
+      );
+      const { data: res, error } = result as PostgrestSingleResponse<any>;
+
       if (error) throw error;
-      return res as ClientOrganization;
+      
+      return {
+        id: res.id,
+        name: res.name,
+        cnpj: res.cnpj,
+        status: res.status,
+        contractDate: res.contract_date,
+        qualityAnalystId: res.quality_analyst_id
+      } as ClientOrganization;
     };
     return await withAuditLog(user, data.id ? 'CLIENT_UPDATE' : 'CLIENT_CREATE', { target: data.name || 'Org', category: 'DATA' }, call);
   },
 
   deleteClient: async (user, id) => {
     const action = async () => {
-      const { error } = await supabase.from('organizations').delete().eq('id', id);
+      const deletePromise = Promise.resolve(supabase.from('organizations').delete().eq('id', id));
+      const result = await withTimeout( 
+        deletePromise as any,
+        API_TIMEOUT,
+        "Tempo esgotado ao deletar cliente."
+      );
+      const { error } = result as PostgrestResponse<null>;
       if (error) throw error;
     };
 
@@ -137,27 +199,70 @@ export const SupabaseAdminService: IAdminService = {
     }, action);
   },
 
-  getFirewallRules: async () => [],
-  getPorts: async () => [],
-  getMaintenanceEvents: async () => [],
   scheduleMaintenance: async (user, event) => {
-     const { data, error } = await supabase.from('maintenance_events').insert({
-       title: event.title,
-       scheduled_date: event.scheduledDate,
-       duration_minutes: event.durationMinutes,
-       description: event.description,
-       status: 'SCHEDULED',
-       created_by: user.id
-     }).select().single();
+     const insertPromise = Promise.resolve(supabase.from('maintenance_events').insert({
+         title: event.title,
+         scheduled_date: event.scheduledDate,
+         duration_minutes: event.durationMinutes,
+         description: event.description,
+         status: 'SCHEDULED',
+         created_by: user.id
+       }).select().single());
+     const result = await withTimeout( 
+       insertPromise as any,
+       API_TIMEOUT,
+       "Tempo esgotado ao agendar manutenção."
+     );
+     const { data, error } = result as PostgrestSingleResponse<any>;
      
      if (error) throw error;
-     return data as MaintenanceEvent;
+     return {
+       id: data.id,
+       title: data.title,
+       scheduledDate: data.scheduled_date,
+       durationMinutes: data.duration_minutes,
+       description: data.description,
+       status: data.status,
+       createdBy: data.created_by
+     } as MaintenanceEvent;
   },
-  cancelMaintenance: async (user, id) => {
-    const action = async () => {
-      const { error } = await supabase.from('maintenance_events').update({ status: 'CANCELLED' }).eq('id', id);
-      if (error) throw error;
-    };
-    await withAuditLog(user, 'MAINTENANCE_CANCEL', { target: id, category: 'SYSTEM' }, action);
+
+  // Métodos antigos para IAdminService
+  getGlobalAuditLogs: async () => {
+    const { data, error } = await supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(200);
+    if (error) throw error;
+    return (data || []).map(l => ({
+      id: l.id,
+      timestamp: l.created_at,
+      userId: l.user_id,
+      userName: l.metadata?.userName || 'Sistema',
+      userRole: l.metadata?.userRole || 'UNKNOWN',
+      action: l.action,
+      category: l.category,
+      target: l.target,
+      severity: l.severity,
+      status: l.status,
+      ip: l.ip,
+      location: l.location,
+      userAgent: l.user_agent,
+      device: l.device,
+      metadata: l.metadata,
+      requestId: l.request_id
+    }));
+  },
+
+  manageUserAccess: async (admin, targetUser) => {
+    if (!targetUser.id) throw new Error("ID do usuário alvo é obrigatório.");
+    const { error } = await supabase.from('profiles').update({
+      role: targetUser.role,
+      status: targetUser.status,
+      updated_at: new Date().toISOString()
+    }).eq('id', targetUser.id);
+    if (error) throw error;
+  },
+
+  getAllClients: async () => {
+    const res = await SupabaseAdminService.getClients(undefined, 1, 1000);
+    return res.items;
   }
 };

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff, Loader2, ArrowRight, AlertOctagon, ShieldCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -16,40 +17,38 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, isLoading, error
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
 
   return (
-    <div className="w-full space-y-6 sm:space-y-8">
+    <div className="w-full space-y-6">
       <header className="space-y-3">
         {/* Gateway Seguro Badge */}
-        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-[#b23c0e]/5 rounded-lg border border-[#b23c0e]/10 text-[#8a2e0b]">
-           <ShieldCheck size={11} />
-           <span className="text-[8px] font-black uppercase tracking-[1.5px]">Gateway Seguro Ativo</span>
+        <div className="inline-flex items-center gap-2 px-3 py-1 bg-[var(--color-accent-orange)]/10 rounded-xl border border-[var(--color-accent-orange)]/20 text-[var(--color-accent-orange)] shadow-lg shadow-[var(--color-accent-orange)]/5">
+           <ShieldCheck size={12} className="text-[var(--color-accent-orange)]" />
+           <span className="text-[9px] font-bold uppercase tracking-[1.5px]">Gateway Seguro Ativo</span>
         </div>
         <div>
-          <h2 className="text-xl sm:text-2xl font-black text-[#040a1d] tracking-tighter leading-none mb-1.5">
-            Acesso Restrito
+          <h2 className="text-2xl md:text-3xl font-bold text-[var(--color-primary-dark-blue)] tracking-tight leading-none mb-1">
+            {t('login.restrictedAccess')}
           </h2>
-          <p className="text-slate-500 text-[11px] sm:text-xs font-medium tracking-tight">
-            Identifique-se para acessar o painel de certificados.
+          <p className="text-sm md:text-base text-slate-500 font-medium tracking-tight">
+            {t('login.identifyToAccess')}
           </p>
         </div>
       </header>
 
       <form onSubmit={(e) => onSubmit(e, email, password)} className="space-y-6">
-        <div className="space-y-4 md:space-y-5">
+        <div className="space-y-4">
           {/* Email Input */}
-          <div className="space-y-1.5 group">
-            <div className="flex justify-between items-center px-1">
-              <label htmlFor="login-email" className="text-[9px] font-black uppercase tracking-[1.5px] text-slate-500 group-focus-within:text-blue-800 transition-colors">
-                {t('login.corpEmail')}
-              </label>
-            </div>
-            <div className={`flex items-center bg-slate-50 border-b-2 rounded-xl transition-all duration-300 ${focusedInput === 'email' ? 'border-blue-700 bg-white shadow-lg shadow-blue-500/5' : 'border-slate-100'}`}>
-              <div className={`w-11 h-12 md:h-14 flex items-center justify-center border-r transition-colors ${focusedInput === 'email' ? 'text-blue-700 border-slate-100' : 'text-slate-300 border-slate-50'}`}>
-                <Mail size={16} />
+          <div className="space-y-2 group">
+            <label htmlFor="login-email" className="text-[10px] md:text-xs font-semibold uppercase tracking-[1.5px] text-slate-400 group-focus-within:text-[var(--color-detail-blue)] transition-colors ml-1">
+              {t('login.corpEmail')}
+            </label>
+            <div className={`flex items-center bg-slate-50 border-2 rounded-2xl overflow-hidden transition-all duration-300 ${focusedInput === 'email' ? 'border-[var(--color-detail-blue)] bg-white shadow-lg shadow-[var(--color-detail-blue)]/5' : 'border-slate-100'}`}>
+              <div className={`w-12 h-14 flex items-center justify-center border-r transition-colors ${focusedInput === 'email' ? 'text-[var(--color-detail-blue)] border-slate-100' : 'text-slate-300 border-slate-50'}`}>
+                <Mail size={18} />
               </div>
               <input 
                 id="login-email"
                 type="email" required 
-                className="flex-1 px-4 py-2.5 bg-transparent outline-none text-xs sm:text-sm font-semibold text-[#040a1d] placeholder-slate-400"
+                className="flex-1 px-4 py-3 bg-transparent outline-none text-sm md:text-base font-medium text-[var(--color-primary-dark-blue)] placeholder-slate-400"
                 placeholder="tecnico@acosvital.com"
                 onFocus={() => setFocusedInput('email')}
                 onBlur={() => setFocusedInput(null)}
@@ -60,26 +59,26 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, isLoading, error
           </div>
 
           {/* Password Input */}
-          <div className="space-y-1.5 group">
-            <div className="flex justify-between items-center px-1">
-              <label htmlFor="login-password" className="text-[9px] font-black uppercase tracking-[1.5px] text-slate-500 group-focus-within:text-blue-800 transition-colors">
+          <div className="space-y-2 group">
+            <div className="flex justify-between items-end px-1">
+              <label htmlFor="login-password" className="text-[10px] md:text-xs font-semibold uppercase tracking-[1.5px] text-slate-400 group-focus-within:text-[var(--color-detail-blue)] transition-colors">
                 {t('login.accessPassword')}
               </label>
               <button 
                 type="button" 
-                className="text-[9px] font-black text-[#b23c0e] hover:text-[#8a2e0b] uppercase tracking-widest transition-colors underline-offset-4 hover:underline"
+                className="text-[10px] md:text-xs font-bold text-[var(--color-accent-orange)] hover:text-[var(--color-accent-orange-hover)] uppercase tracking-wider transition-colors underline-offset-4 hover:underline"
               >
-                Redefinir
+                {t('login.forgotPassword')}
               </button>
             </div>
-            <div className={`flex items-center bg-slate-50 border-b-2 rounded-xl transition-all duration-300 ${focusedInput === 'password' ? 'border-blue-700 bg-white shadow-lg shadow-blue-500/5' : 'border-slate-100'}`}>
-              <div className={`w-11 h-12 md:h-14 flex items-center justify-center border-r transition-colors ${focusedInput === 'password' ? 'text-blue-700 border-slate-100' : 'text-slate-300 border-slate-50'}`}>
-                <Lock size={16} />
+            <div className={`flex items-center bg-slate-50 border-2 rounded-2xl overflow-hidden transition-all duration-300 ${focusedInput === 'password' ? 'border-[var(--color-detail-blue)] bg-white shadow-lg shadow-[var(--color-detail-blue)]/5' : 'border-slate-100'}`}>
+              <div className={`w-12 h-14 flex items-center justify-center border-r transition-colors ${focusedInput === 'password' ? 'text-[var(--color-detail-blue)] border-slate-100' : 'text-slate-300 border-slate-50'}`}>
+                <Lock size={18} />
               </div>
               <input 
                 id="login-password"
                 type={showPassword ? "text" : "password"} required 
-                className="flex-1 px-4 py-2.5 bg-transparent outline-none text-xs sm:text-sm font-semibold text-[#040a1d] placeholder-slate-400 tracking-widest"
+                className="flex-1 px-4 py-3 bg-transparent outline-none text-sm md:text-base font-medium text-[var(--color-primary-dark-blue)] placeholder-slate-400 tracking-widest"
                 placeholder="••••••••"
                 onFocus={() => setFocusedInput('password')}
                 onBlur={() => setFocusedInput(null)}
@@ -89,31 +88,31 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, isLoading, error
               <button 
                 type="button" 
                 onClick={() => setShowPassword(!showPassword)} 
-                className="w-11 h-12 md:h-14 flex items-center justify-center text-slate-300 hover:text-blue-700 transition-colors"
+                className="w-12 h-14 flex items-center justify-center text-slate-300 hover:text-[var(--color-detail-blue)] transition-colors"
                 aria-label={showPassword ? t('common.hidePassword') : t('common.showPassword')}
               >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
           </div>
         </div>
 
         {error && (
-          <div className="p-3 bg-red-50 text-red-900 text-[10px] font-bold rounded-xl border border-red-100 flex items-center gap-2 animate-shake" role="alert">
-            <AlertOctagon size={14} className="text-red-700 shrink-0" />
+          <div className="p-4 bg-red-50 text-red-800 text-xs font-semibold rounded-xl border border-red-200 flex items-center gap-3 animate-shake" role="alert">
+            <AlertOctagon size={16} className="text-red-700 shrink-0" />
             <span className="leading-tight">{error}</span>
           </div>
         )}
 
         <button 
           type="submit" disabled={isLoading}
-          className="w-full bg-[#040a1d] hover:bg-slate-800 text-white font-black h-12 md:h-14 rounded-xl transition-all flex items-center justify-center gap-3 shadow-2xl shadow-blue-900/10 active:scale-[0.98] disabled:opacity-70 group overflow-hidden relative"
+          className="w-full bg-[var(--color-primary-dark-blue)] hover:bg-slate-800 text-white font-bold h-14 rounded-2xl transition-all flex items-center justify-center gap-3 shadow-xl shadow-[var(--color-primary-dark-blue)]/10 active:scale-[0.98] disabled:opacity-70 group overflow-hidden relative"
         >
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
           {isLoading ? <Loader2 size={20} className="animate-spin" /> : (
             <>
-              <span className="uppercase tracking-[4px] text-[10px] md:text-[11px]">{t('login.authenticate')}</span>
-              <ArrowRight size={16} className="text-blue-400 group-hover:translate-x-1 transition-transform" />
+              <span className="uppercase tracking-[2px] text-[10px] md:text-xs">{t('login.authenticate')}</span>
+              <ArrowRight size={18} className="text-[var(--color-detail-blue)] group-hover:translate-x-1.5 transition-transform" />
             </>
           )}
         </button>

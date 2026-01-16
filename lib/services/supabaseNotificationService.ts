@@ -25,10 +25,10 @@ export const SupabaseNotificationService: INotificationService = {
         if (error) throw error;
         return (data || []).map(n => ({
             id: n.id,
-            userId: n.user_id,
+            userId: n.user_id || null, 
             title: n.title,
             message: n.message,
-            type: n.type as any,
+            type: n.type as AppNotification['type'], 
             isRead: n.is_read,
             timestamp: n.created_at,
             link: n.link
@@ -57,7 +57,7 @@ export const SupabaseNotificationService: INotificationService = {
             .or(`user_id.eq.${user.id},user_id.is.null`);
     },
 
-    addNotification: async (userId, title, message, type, link) => {
+    addNotification: async (userId: string | null, title, message, type, link) => {
         await supabase.from('notifications').insert({
             user_id: userId,
             title,
