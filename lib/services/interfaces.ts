@@ -1,4 +1,3 @@
-
 import { 
   User, 
   ClientOrganization,
@@ -24,6 +23,15 @@ export interface AdminStatsData {
   memoryUsage: number;
   dbConnections: number;
   dbMaxConnections: number;
+}
+
+export interface BackupRecord {
+  id: string;
+  createdAt: string;
+  createdBy: string;
+  size: string;
+  status: 'SUCCESS' | 'FAILED';
+  checksum: string;
 }
 
 // Interface para estatísticas do dashboard de qualidade
@@ -54,19 +62,6 @@ export interface RawClientOrganization {
   contract_date: string;
   quality_analyst_id: string | null;
   profiles?: { full_name: string } | { full_name: string }[];
-}
-
-// Interface para dados brutos de perfil vindo do Supabase
-export interface RawProfile {
-  id: string;
-  full_name: string;
-  email: string;
-  role: string;
-  organization_id: string | null;
-  status: string;
-  department: string;
-  last_login: string | null;
-  organizations?: { name: string } | { name: string }[];
 }
 
 export interface PaginatedResponse<T> {
@@ -136,6 +131,7 @@ export interface IAdminService {
   getGlobalAuditLogs: () => Promise<AuditLog[]>;
   manageUserAccess: (admin: User, targetUser: Partial<User>) => Promise<void>;
   getAllClients: () => Promise<ClientOrganization[]>;
+  generateSystemBackup: (user: User) => Promise<{ blob: Blob, fileName: string }>;
 }
 
 export interface IUserService {

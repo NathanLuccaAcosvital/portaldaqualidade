@@ -8,7 +8,9 @@ import {
   Library,
   FolderTree,
   Settings,
-  LogOut
+  LogOut,
+  Database,
+  ScanEye
 } from 'lucide-react';
 import { UserRole } from '../types/index.ts';
 
@@ -33,7 +35,9 @@ export const getAdminMenuConfig = (t: any): NavSection[] => [
     title: "Governança Master",
     items: [
       { label: "Painel de Controle", path: '/admin/dashboard', icon: LayoutDashboard, exact: true },
+      { label: "Monitor de Carteira", path: '/quality/portfolio', icon: Building2 },
       { label: "Base de Usuários", path: '/admin/users', icon: Users },
+      { label: "Cofre de Backup", path: '/admin?tab=backup', icon: Database },
       { label: "Status do Sistema", path: '/admin/system', icon: ShieldCheck },
     ]
   }
@@ -46,8 +50,8 @@ export const getQualityMenuConfig = (t: any): NavSection[] => [
   {
     title: "Operação Técnica",
     items: [
-      { label: "Overview", path: '/quality/dashboard', icon: LayoutDashboard, exact: true },
-      { label: "Minha Carteira", path: '/quality/portfolio', icon: Building2 },
+      { label: "Visão Geral", path: '/quality/dashboard', icon: LayoutDashboard, exact: true },
+      { label: "Monitor de Carteira", path: '/quality/portfolio', icon: Building2 },
     ]
   },
   {
@@ -106,14 +110,14 @@ export const getBottomNavItems = (user: any, t: any): NavItem[] => {
   if (role === UserRole.ADMIN) {
     return [
       { label: "Home", path: '/admin/dashboard', icon: LayoutDashboard },
-      { label: "Usuários", path: '/admin/users', icon: Users },
+      { label: "Carteira", path: '/quality/portfolio', icon: Building2 },
     ];
   }
 
   if (role === UserRole.QUALITY) {
     return [
       { label: "Dash", path: '/quality/dashboard', icon: LayoutDashboard },
-      { label: "Portfólio", path: '/quality/portfolio', icon: Building2 },
+      { label: "Carteira", path: '/quality/portfolio', icon: Building2 },
     ];
   }
   

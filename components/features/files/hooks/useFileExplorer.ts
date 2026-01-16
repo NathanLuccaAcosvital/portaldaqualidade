@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../../../context/authContext.tsx';
 import { fileService } from '../../../../lib/services/index.ts';
@@ -85,6 +84,7 @@ export const useFileExplorer = (options: FileExplorerOptions): UseFileExplorerRe
   }, []);
 
   const handleUploadFile = useCallback(async (fileBlob: File, fileName: string, parentId: string | null) => {
+    // Define o owner alvo baseado na pasta atual ou contexto da página
     const targetOwnerId = options.ownerId && options.ownerId !== 'global' ? options.ownerId : user?.organizationId;
 
     if (!user || !targetOwnerId) {
@@ -96,12 +96,13 @@ export const useFileExplorer = (options: FileExplorerOptions): UseFileExplorerRe
         await fileService.uploadFile(user, {
             name: fileName,
             fileBlob: fileBlob,
-            parentId: parentId,
+            parentId: parentId, // Garante que o arquivo seja salvo na pasta de destino onde o usuário clicou
             type: fileBlob.type.startsWith('image/') ? FileType.IMAGE : FileType.PDF,
             size: `${(fileBlob.size / 1024 / 1024).toFixed(2)} MB`,
             mimeType: fileBlob.type
         }, targetOwnerId);
         showToast(t('files.upload.success'), 'success');
+        // Força o recarregamento da pasta atual para mostrar o novo arquivo
         await fetchFiles(true);
     } catch (err: any) {
         showToast(err.message || t('files.errorLoadingFiles'), 'error');

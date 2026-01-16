@@ -1,4 +1,3 @@
-
 import { IAdminService, AdminStatsData, PaginatedResponse, RawClientOrganization } from './interfaces.ts';
 import { supabase } from '../supabaseClient.ts';
 import { SystemStatus, MaintenanceEvent } from '../../types/system.ts';
@@ -40,7 +39,6 @@ export const SupabaseAdminService: IAdminService = {
         mode: newStatus.mode,
         message: newStatus.message,
         scheduled_start: newStatus.scheduledStart,
-        // Fix: Use correct camelCase property name 'scheduledEnd' from the SystemStatus type
         scheduled_end: newStatus.scheduledEnd,
         updated_by: user.id,
         updated_at: new Date().toISOString()
@@ -149,7 +147,6 @@ export const SupabaseAdminService: IAdminService = {
   saveClient: async (user, data) => {
     const isNew = !data.id;
     const call = async () => {
-      // REGRA VITAL: Verificação de duplicidade por CNPJ
       if (isNew) {
         const { data: existing } = await supabase
           .from('organizations')
@@ -175,9 +172,7 @@ export const SupabaseAdminService: IAdminService = {
       const { data: res, error } = await query.select().single();
       if (error) throw error;
 
-      // REGRA VITAL: Criação Garantida e Única da Pasta Raiz
       if (isNew && res.id) {
-          // Verifica se por algum motivo técnico a pasta já existe
           const { data: existingFolder } = await supabase
             .from('files')
             .select('id')
@@ -280,5 +275,41 @@ export const SupabaseAdminService: IAdminService = {
   getAllClients: async () => {
     const res = await SupabaseAdminService.getClients(undefined, 1, 1000);
     return res.items;
+  },
+
+  generateSystemBackup: async (user) => {
+    const action = async () => {
+      // Coleta dados de todas as tabelas críticas para reconstrução
+      const [orgs, profiles, files, audit] = await Promise.all([
+        supabase.from('organizations').select('*'),
+        supabase.from('profiles').select('*'),
+        supabase.from('files').select('*'),
+        supabase.from('audit_logs').select('*').limit(1000)
+      ]);
+
+      const backupManifest = {
+        version: "1.0",
+        timestamp: new Date().toISOString(),
+        generatedBy: user.email,
+        data: {
+          organizations: orgs.data || [],
+          profiles: profiles.data || [],
+          files_metadata: files.data || [],
+          audit_ledger_slice: audit.data || []
+        }
+      };
+
+      const jsonStr = JSON.stringify(backupManifest, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const fileName = `VITAL_BACKUP_${new Date().toISOString().split('T')[0]}.json`;
+
+      return { blob, fileName };
+    };
+
+    return await withAuditLog(user, 'SYSTEM_BACKUP_GENERATED', { 
+      target: 'CLOUD_RECOVERY_LEDGER', 
+      category: 'SYSTEM', 
+      initialSeverity: 'CRITICAL' 
+    }, action);
   }
 };

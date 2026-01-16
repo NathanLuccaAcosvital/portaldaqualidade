@@ -1,5 +1,4 @@
-
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../../../context/authContext.tsx';
 import { useTranslation } from 'react-i18next';
@@ -12,9 +11,10 @@ import { CreateFolderModal } from '../../files/modals/CreateFolderModal.tsx';
 import { RenameModal } from '../../files/modals/RenameModal.tsx';
 import { UploadFileModal } from '../../files/modals/UploadFileModal.tsx';
 import { DeleteConfirmationModal } from '../../files/modals/DeleteConfirmationModal.tsx';
-import { ProcessingOverlay } from '../components/ViewStates.tsx';
+import { ProcessingOverlay, QualityLoadingState } from '../components/ViewStates.tsx';
 import { fileService } from '../../../../lib/services/index.ts';
 import { useToast } from '../../../../context/notificationContext.tsx';
+import { supabase } from '../../../../lib/supabaseClient.ts';
 
 interface FileExplorerViewProps {
   orgId: string;
@@ -32,6 +32,7 @@ export const FileExplorerView: React.FC<FileExplorerViewProps> = ({ orgId }) => 
   const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [selectedFileForPreview, setSelectedFileForPreview] = useState<FileNode | null>(null);
+  const [isAutoNavigating, setIsAutoNavigating] = useState(false);
   
   // Estados para Operações de Arquivos
   const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
@@ -70,6 +71,23 @@ export const FileExplorerView: React.FC<FileExplorerViewProps> = ({ orgId }) => 
     }, { replace: true });
   }, [setSearchParams]);
 
+  // REGRA VITAL: Ao carregar o portfólio de um cliente, entra automaticamente na pasta raiz dele
+  // Isso evita que uploads sejam feitos "ao lado" da pasta do cliente em vez de "dentro"
+  useEffect(() => {
+    if (!currentFolderId && orgId && orgId !== 'global' && !searchTerm) {
+        setIsAutoNavigating(true);
+        supabase.from('files')
+            .select('id')
+            .eq('owner_id', orgId)
+            .is('parent_id', null)
+            .maybeSingle()
+            .then(({ data }) => {
+                if (data) handleNavigate(data.id);
+            })
+            .finally(() => setIsAutoNavigating(false));
+    }
+  }, [orgId, currentFolderId, searchTerm, handleNavigate]);
+
   const handleFileSelectForPreview = useCallback((file: FileNode | null) => {
     if (file && file.type !== FileType.FOLDER) {
         setSelectedFileForPreview(file);
@@ -94,6 +112,7 @@ export const FileExplorerView: React.FC<FileExplorerViewProps> = ({ orgId }) => 
   const handleUploadAction = async (file: File, fileName: string) => {
     setIsUploading(true);
     try {
+      // Passa explicitamente o currentFolderId para garantir que o upload respeite a pasta atual
       await handleUploadFile(file, fileName, currentFolderId);
       setIsUploadModalOpen(false);
     } catch (error: any) {
@@ -166,6 +185,10 @@ export const FileExplorerView: React.FC<FileExplorerViewProps> = ({ orgId }) => 
   };
 
   const selectedFilesData = files.filter(f => selectedFileIds.includes(f.id));
+
+  if (isAutoNavigating) {
+    return <QualityLoadingState message="Localizando Diretório da Organização..." />;
+  }
 
   return (
     <div className="flex flex-col h-full bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden min-h-[500px]">

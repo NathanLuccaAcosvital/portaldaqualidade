@@ -25,6 +25,7 @@ export enum FileType {
 export enum QualityStatus {
   APPROVED = 'APPROVED',
   PENDING = 'PENDING',
+  SENT = 'SENT',
   REJECTED = 'REJECTED',
   TO_DELETE = 'TO_DELETE'
 }

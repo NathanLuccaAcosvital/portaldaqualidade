@@ -1,4 +1,3 @@
-
 import { supabase } from '../supabaseClient.ts';
 import { FileNode, FileType, BreadcrumbItem, AuditLog, User, UserRole } from '../../types/index.ts';
 import { logAction as internalLogAction } from './loggingService.ts';
@@ -69,11 +68,17 @@ export const SupabaseFileService: IFileService = {
   },
 
   createFolder: async (user, parentId, name, ownerId) => {
+    let resolvedOwnerId = ownerId || null;
+    if (parentId) {
+        const { data: parentFolder } = await supabase.from('files').select('owner_id').eq('id', parentId).single();
+        if (parentFolder?.owner_id) resolvedOwnerId = parentFolder.owner_id;
+    }
+
     const { data, error } = await supabase.from('files').insert({
         name,
         type: 'FOLDER',
         parent_id: parentId,
-        owner_id: ownerId || null,
+        owner_id: resolvedOwnerId,
         storage_path: 'system/folder',
         updated_at: new Date().toISOString()
     }).select().single();
@@ -85,10 +90,16 @@ export const SupabaseFileService: IFileService = {
   uploadFile: async (user, fileData, ownerId) => {
     if (!fileData.fileBlob) throw new Error("Blob não fornecido.");
     
+    let resolvedOwnerId = ownerId;
+    if (fileData.parentId) {
+        const { data: parentFolder } = await supabase.from('files').select('owner_id').eq('id', fileData.parentId).single();
+        if (parentFolder?.owner_id) resolvedOwnerId = parentFolder.owner_id;
+    }
+
     const sanitizedFileName = sanitizeFilePathSegment(fileData.name);
     const folderPath = fileData.parentId || 'root';
     const uniqueId = crypto.randomUUID();
-    const filePath = `${ownerId}/${folderPath}/${uniqueId}-${sanitizedFileName}`;
+    const filePath = `${resolvedOwnerId}/${folderPath}/${uniqueId}-${sanitizedFileName}`;
     
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from(STORAGE_BUCKET)
@@ -103,7 +114,7 @@ export const SupabaseFileService: IFileService = {
         name: fileData.name, 
         type: fileData.type,
         parent_id: fileData.parentId,
-        owner_id: ownerId,
+        owner_id: resolvedOwnerId,
         storage_path: uploadData.path,
         size: `${(fileData.fileBlob.size / 1024 / 1024).toFixed(2)} MB`,
         metadata: fileData.metadata || { status: 'PENDING' },
@@ -125,10 +136,43 @@ export const SupabaseFileService: IFileService = {
 
   deleteFiles: async (fileIds) => {
     if (!fileIds || fileIds.length === 0) return;
-    const { error } = await supabase.from('files').delete().in('id', fileIds);
-    if (error) {
-        console.error("[SupabaseFileService] Delete Error:", error.message);
-        throw new Error("Falha ao remover registros do banco de dados.");
+
+    try {
+        // 1. Buscar os caminhos de storage de todos os itens (e filhos se houver cascata manual necessária)
+        // Para simplificar, focamos nos itens selecionados. Se for uma pasta, deletamos apenas o registro (o storage de pastas é virtual no DB)
+        const { data: items, error: fetchError } = await supabase
+            .from('files')
+            .select('storage_path, type')
+            .in('id', fileIds);
+
+        if (fetchError) throw fetchError;
+
+        const pathsToRemove = (items || [])
+            .filter(item => item.type !== 'FOLDER' && item.storage_path && item.storage_path !== 'system/folder')
+            .map(item => item.storage_path);
+
+        // 2. Remover do Storage físico
+        if (pathsToRemove.length > 0) {
+            const { error: storageError } = await supabase.storage
+                .from(STORAGE_BUCKET)
+                .remove(pathsToRemove);
+            
+            if (storageError) {
+                console.warn("[SupabaseFileService] Erro ao remover arquivos físicos, prosseguindo com limpeza do DB:", storageError.message);
+            }
+        }
+
+        // 3. Remover registros do banco de dados
+        const { error: dbError } = await supabase
+            .from('files')
+            .delete()
+            .in('id', fileIds);
+
+        if (dbError) throw dbError;
+
+    } catch (error: any) {
+        console.error("[SupabaseFileService] Falha crítica na exclusão:", error.message);
+        throw new Error("Erro ao processar exclusão de recursos.");
     }
   },
 
@@ -151,8 +195,6 @@ export const SupabaseFileService: IFileService = {
       const isCompanyRoot = isClient && data.owner_id === user.organizationId && data.parent_id === null;
       
       if (isCompanyRoot) {
-          // Quando estiver na raiz da empresa, o nome da pasta em si vira 'Início'
-          // E o item nulo vira o Nome da Empresa
           breadcrumbs.unshift({ id: data.id, name: 'Início' });
           breadcrumbs.unshift({ id: null, name: companyName }); 
           break;
@@ -162,7 +204,6 @@ export const SupabaseFileService: IFileService = {
       folderId = data.parent_id;
     }
 
-    // Caso não esteja em nenhuma pasta (fallback)
     if (breadcrumbs.length === 0) {
         breadcrumbs.unshift({ id: null, name: companyName });
     }
