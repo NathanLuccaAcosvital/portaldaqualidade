@@ -12,7 +12,6 @@ const toDomainFile = (row: any): FileNode => ({
   name: row.name,
   type: row.type as FileType,
   size: row.size,
-  mimeType: row.mime_type,
   updatedAt: row.updated_at,
   ownerId: row.owner_id,
   storagePath: row.storage_path,
@@ -55,8 +54,7 @@ export const SupabaseFileService: IFileService = {
         parent_id: parentId,
         owner_id: ownerId || null,
         storage_path: 'system/folder',
-        updated_at: new Date().toISOString(),
-        mime_type: 'folder'
+        updated_at: new Date().toISOString()
     }).select().single();
     
     if (error) throw error;
@@ -77,7 +75,6 @@ export const SupabaseFileService: IFileService = {
         owner_id: ownerId,
         storage_path: uploadData.path,
         size: `${(fileData.fileBlob.size / 1024 / 1024).toFixed(2)} MB`,
-        mime_type: fileData.fileBlob.type,
         metadata: fileData.metadata || { status: 'PENDING' },
         uploaded_by: user.id,
         updated_at: new Date().toISOString()

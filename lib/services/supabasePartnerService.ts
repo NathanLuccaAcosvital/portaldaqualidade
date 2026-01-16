@@ -10,7 +10,6 @@ const toDomainFile = (row: any): FileNode => ({
   name: row.name,
   type: row.type as FileType,
   size: row.size,
-  mimeType: row.mime_type,
   updatedAt: row.updated_at,
   ownerId: row.owner_id,
   storagePath: row.storage_path,
