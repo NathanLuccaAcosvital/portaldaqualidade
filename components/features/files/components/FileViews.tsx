@@ -21,12 +21,18 @@ export const FileListView: React.FC<FileViewProps> = ({
   files, onNavigate, onSelectFileForPreview, selectedFileIds, onToggleFileSelection, onDownload, onRename, onDelete, userRole 
 }) => {
   const { t } = useTranslation();
+  const isClient = userRole === UserRole.CLIENT;
+
   return (
     <div className="space-y-1">
       {files.map((file) => {
         const isSelected = selectedFileIds.includes(file.id);
         const isToDelete = file.metadata?.status === QualityStatus.TO_DELETE;
         const isFolder = file.type === FileType.FOLDER;
+        
+        // Regra Vital: Apenas Staff pode renomear. 
+        // Pastas com parentId null (Pastas de Clientes) são protegidas.
+        const canRename = !isClient && (file.type !== FileType.FOLDER || file.parentId !== null);
 
         return (
           <div 
@@ -55,6 +61,15 @@ export const FileListView: React.FC<FileViewProps> = ({
             </div>
             
             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pr-4">
+               {canRename && (
+                 <button 
+                  onClick={(e) => { e.stopPropagation(); onRename(file); }}
+                  className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all"
+                  title={t('files.rename.title')}
+                 >
+                    <Edit2 size={14} />
+                 </button>
+               )}
                {isFolder ? <ChevronRight size={16} className="text-slate-300" /> : <ArrowUpRight size={16} className="text-blue-500" />}
             </div>
           </div>
@@ -68,12 +83,18 @@ export const FileGridView: React.FC<FileViewProps> = ({
   files, onNavigate, onSelectFileForPreview, selectedFileIds, onToggleFileSelection, onDownload, onRename, onDelete, userRole 
 }) => {
   const { t } = useTranslation();
+  const isClient = userRole === UserRole.CLIENT;
+
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
       {files.map((file) => {
         const isSelected = selectedFileIds.includes(file.id);
         const isToDelete = file.metadata?.status === QualityStatus.TO_DELETE;
         const isFolder = file.type === FileType.FOLDER;
+
+        // Regra Vital: Apenas Staff pode renomear. 
+        // Pastas com parentId null (Pastas de Clientes) são protegidas.
+        const canRename = !isClient && (file.type !== FileType.FOLDER || file.parentId !== null);
 
         return (
           <div 
@@ -103,6 +124,17 @@ export const FileGridView: React.FC<FileViewProps> = ({
               )}
             </div>
             
+            <div className="absolute top-4 left-4 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {canRename && (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); onRename(file); }}
+                    className="p-1.5 bg-white shadow-sm border border-slate-100 text-slate-400 hover:text-blue-500 rounded-lg transition-all"
+                  >
+                    <Edit2 size={12} />
+                  </button>
+                )}
+            </div>
+
             <button 
               className="absolute top-4 right-4 p-2 text-slate-300 hover:text-blue-600 transition-colors"
               onClick={(e) => { e.stopPropagation(); onToggleFileSelection(file.id); }}

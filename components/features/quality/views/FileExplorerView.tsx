@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../../../context/authContext.tsx';
@@ -7,6 +8,9 @@ import { useFileExplorer } from '../../files/hooks/useFileExplorer.ts';
 import { FileExplorer, FileExplorerHandle } from '../../files/FileExplorer.tsx';
 import { ExplorerToolbar } from '../../files/components/ExplorerToolbar.tsx';
 import { FilePreviewModal } from '../../files/FilePreviewModal.tsx';
+import { CreateFolderModal } from '../../files/modals/CreateFolderModal.tsx';
+import { RenameModal } from '../../files/modals/RenameModal.tsx';
+import { UploadFileModal } from '../../files/modals/UploadFileModal.tsx';
 import { ProcessingOverlay } from '../components/ViewStates.tsx';
 import { fileService } from '../../../../lib/services/index.ts';
 import { useToast } from '../../../../context/notificationContext.tsx';
@@ -28,11 +32,22 @@ export const FileExplorerView: React.FC<FileExplorerViewProps> = ({ orgId }) => 
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [selectedFileForPreview, setSelectedFileForPreview] = useState<FileNode | null>(null);
   
+  // Estados para Operações de Arquivos
+  const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+  const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [fileToRename, setFileToRename] = useState<FileNode | null>(null);
+  
+  // Estados para Upload
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  
   const fileExplorerRef = useRef<FileExplorerHandle>(null);
 
   const {
     files, loading, breadcrumbs,
-    handleDeleteFiles, handleRenameFile, fetchFiles
+    handleDeleteFiles, handleRenameFile, handleCreateFolder, handleUploadFile
   } = useFileExplorer({
     currentFolderId,
     searchTerm,
@@ -69,19 +84,69 @@ export const FileExplorerView: React.FC<FileExplorerViewProps> = ({ orgId }) => 
     }
   }, [user]);
 
-  // PASSO 4: Regra de Exclusão para Analista (Lixo Digital)
+  const handleUploadAction = async (file: File, fileName: string) => {
+    setIsUploading(true);
+    try {
+      // Se estivermos em uma visão de cliente específica, usamos o orgId dela
+      // Caso contrário (visão global), usamos a organização do próprio usuário (Vital)
+      const targetOrg = orgId && orgId !== 'global' ? orgId : user?.organizationId;
+      
+      if (!targetOrg) {
+        throw new Error("Organização alvo não identificada.");
+      }
+
+      await handleUploadFile(file, fileName, currentFolderId);
+      setIsUploadModalOpen(false);
+    } catch (error: any) {
+      showToast(error.message || "Falha ao transmitir arquivo para o servidor.", "error");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleCreateFolderAction = async (folderName: string) => {
+    setIsCreatingFolder(true);
+    try {
+      await handleCreateFolder(folderName, currentFolderId); 
+      setIsCreateFolderModalOpen(false);
+    } catch (error) {
+      showToast("Falha ao registrar nova pasta no sistema.", "error");
+    } finally {
+      setIsCreatingFolder(false);
+    }
+  };
+
+  const handleRenameAction = async (newName: string) => {
+    if (!fileToRename) return;
+    setIsRenaming(true);
+    try {
+      await handleRenameFile(fileToRename.id, newName);
+      setIsRenameModalOpen(false);
+      setFileToRename(null);
+    } catch (error) {
+      showToast("Erro ao renomear item.", "error");
+    } finally {
+      setIsRenaming(false);
+    }
+  };
+
+  const triggerRename = (file: FileNode) => {
+    setFileToRename(file);
+    setIsRenameModalOpen(true);
+  };
+
   const handleQualityDelete = async () => {
     if (!user || selectedFileIds.length === 0) return;
     
     const targets = files.filter(f => selectedFileIds.includes(f.id));
-    const canDeleteAll = targets.every(f => f.metadata?.status === QualityStatus.TO_DELETE);
+    const canDeleteAll = targets.every(f => f.metadata?.status === QualityStatus.TO_DELETE || f.type === FileType.FOLDER);
 
     if (!canDeleteAll) {
-      showToast("Apenas arquivos marcados como 'APAGAR' pelo cliente podem ser removidos.", "warning");
+      showToast("Apenas pastas vazias ou arquivos marcados como 'APAGAR' podem ser removidos.", "warning");
       return;
     }
 
-    if (window.confirm(`Deseja remover permanentemente ${targets.length} arquivo(s) substituído(s)?`)) {
+    if (window.confirm(`Deseja remover permanentemente ${targets.length} item(s)?`)) {
         try {
             await handleDeleteFiles(selectedFileIds);
             setSelectedFileIds([]);
@@ -103,18 +168,48 @@ export const FileExplorerView: React.FC<FileExplorerViewProps> = ({ orgId }) => 
         onDownloadFile={handleDownloadSingleFile} 
       />
 
-      {loading && <ProcessingOverlay message={t('files.processingFiles')} />}
+      <UploadFileModal 
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onUpload={handleUploadAction}
+        isUploading={isUploading}
+        currentFolderId={currentFolderId}
+      />
+
+      <CreateFolderModal 
+        isOpen={isCreateFolderModalOpen}
+        onClose={() => setIsCreateFolderModalOpen(false)}
+        onCreate={handleCreateFolderAction}
+        isCreating={isCreatingFolder}
+      />
+
+      <RenameModal 
+        isOpen={isRenameModalOpen}
+        onClose={() => setIsRenameModalOpen(false)}
+        onRename={handleRenameAction}
+        isRenaming={isRenaming}
+        currentName={fileToRename?.name || ''}
+      />
+
+      {(loading || isCreatingFolder || isRenaming || isUploading) && (
+        <ProcessingOverlay message={
+          isCreatingFolder ? "Sincronizando nova estrutura..." : 
+          isRenaming ? "Atualizando identificador..." : 
+          isUploading ? "Transmitindo arquivo para nuvem..." :
+          t('files.processingFiles')
+        } />
+      )}
 
       <ExplorerToolbar
         breadcrumbs={breadcrumbs}
         onNavigate={handleNavigate}
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
-        onUploadClick={() => {}} 
-        onCreateFolderClick={() => {}}
+        onUploadClick={() => setIsUploadModalOpen(true)} 
+        onCreateFolderClick={() => setIsCreateFolderModalOpen(true)}
         selectedCount={selectedFileIds.length}
         onDeleteSelected={handleQualityDelete} 
-        onRenameSelected={() => {}}
+        onRenameSelected={() => selectedFilesData.length === 1 && triggerRename(selectedFilesData[0])}
         onDownloadSelected={() => {
            if (selectedFilesData.length === 1) handleDownloadSingleFile(selectedFilesData[0]);
         }}
@@ -136,7 +231,7 @@ export const FileExplorerView: React.FC<FileExplorerViewProps> = ({ orgId }) => 
         onNavigate={handleNavigate}
         onFileSelectForPreview={handleFileSelectForPreview}
         onDownloadFile={handleDownloadSingleFile}
-        onRenameFile={() => {}}
+        onRenameFile={triggerRename}
         onDeleteFile={() => {}}
         viewMode={viewMode}
         userRole={UserRole.QUALITY}

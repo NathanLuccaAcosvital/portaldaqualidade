@@ -42,7 +42,7 @@ export const ExplorerToolbar: React.FC<ExplorerToolbarProps> = ({
   return (
     <div className="bg-white border-b border-slate-100 p-4 flex flex-col lg:flex-row items-center justify-between gap-4">
       
-      {/* Fluxo LTR de Navegação (Começa na Esquerda e progride para Direita) */}
+      {/* Fluxo LTR de Navegação */}
       <div className="flex items-center gap-3 flex-1 min-w-0 w-full overflow-hidden justify-start">
         <Breadcrumbs breadcrumbs={breadcrumbs} onNavigate={onNavigate} t={t} />
       </div>
@@ -179,17 +179,47 @@ const SelectedActions: React.FC<{
   selectedFilesData: FileNode[];
   userRole: UserRole;
 }> = ({ count, onDelete, onRename, onDownload, t, selectedFilesData, userRole }) => {
-  const isSingleFileSelected = count === 1 && selectedFilesData[0]?.type !== FileType.FOLDER;
+  const isSingleSelected = count === 1;
+  const isSingleFileSelected = isSingleSelected && selectedFilesData[0]?.type !== FileType.FOLDER;
   const isClient = userRole === UserRole.CLIENT;
+  
+  // Regra Vital: Apenas Staff pode renomear.
+  // Se for uma pasta, ela deve ter um parentId (não pode ser pasta raiz de cliente).
+  const canRenameSelected = isSingleSelected && !isClient && (
+    selectedFilesData[0].type !== FileType.FOLDER || selectedFilesData[0].parentId !== null
+  );
 
   return (
     <div className="flex items-center gap-2 bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100 animate-in zoom-in-95">
       <span className="text-[10px] font-black uppercase text-blue-700 mr-2">{count} selecionado</span>
       {!isClient && (
-        <button onClick={onDelete} className="p-1.5 text-red-500 hover:bg-red-100 rounded-lg transition-colors"><Trash2 size={16} /></button>
+        <div className="flex items-center gap-1">
+          {canRenameSelected && (
+            <button 
+              onClick={onRename} 
+              className="p-1.5 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+              title={t('files.rename.button')}
+            >
+              <Edit2 size={16} />
+            </button>
+          )}
+          <button 
+            onClick={onDelete} 
+            className="p-1.5 text-red-500 hover:bg-red-100 rounded-lg transition-colors"
+            title={t('files.delete.button')}
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
       )}
       {isSingleFileSelected && (
-        <button onClick={onDownload} className="p-1.5 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-colors"><Download size={16} /></button>
+        <button 
+          onClick={onDownload} 
+          className="p-1.5 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-colors"
+          title={t('files.downloadButton')}
+        >
+          <Download size={16} />
+        </button>
       )}
     </div>
   );
