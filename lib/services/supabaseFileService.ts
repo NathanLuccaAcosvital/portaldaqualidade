@@ -6,6 +6,19 @@ import { IFileService, PaginatedResponse, DashboardStatsData } from './interface
 
 const STORAGE_BUCKET = 'certificates';
 
+/**
+ * Sanitiza um segmento do caminho para ser compatível com sistemas de arquivos e S3.
+ * Remove acentos, substitui espaços por underscores e remove caracteres não alfanuméricos (exceto ponto e hífen).
+ */
+const sanitizeFilePathSegment = (segment: string): string => {
+  return segment
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // Remove acentos
+    .replace(/\s+/g, '_')           // Espaços para _
+    .replace(/[^a-zA-Z0-9.\-_]/g, '') // Remove caracteres especiais perigosos
+    .replace(/_{2,}/g, '_');        // Remove underscores duplicados
+};
+
 const toDomainFile = (row: any): FileNode => ({
   id: row.id,
   parentId: row.parent_id,
@@ -63,13 +76,26 @@ export const SupabaseFileService: IFileService = {
 
   uploadFile: async (user, fileData, ownerId) => {
     if (!fileData.fileBlob) throw new Error("Blob não fornecido.");
-    const filePath = `${ownerId}/${fileData.parentId || 'root'}/${crypto.randomUUID()}-${fileData.name}`;
     
-    const { data: uploadData, error: uploadError } = await supabase.storage.from(STORAGE_BUCKET).upload(filePath, fileData.fileBlob);
+    // Sanitização técnica do caminho físico (Key) do Storage
+    const sanitizedFileName = sanitizeFilePathSegment(fileData.name);
+    const folderPath = fileData.parentId || 'root';
+    const uniqueId = crypto.randomUUID();
+    
+    // Caminho limpo: org-uuid/folder-uuid/file-uuid-name.ext
+    const filePath = `${ownerId}/${folderPath}/${uniqueId}-${sanitizedFileName}`;
+    
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .upload(filePath, fileData.fileBlob, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
     if (uploadError) throw uploadError;
 
     const { data, error } = await supabase.from('files').insert({
-        name: fileData.name,
+        name: fileData.name, // Mantém o nome original com espaços/acentos para exibição na UI
         type: fileData.type,
         parent_id: fileData.parentId,
         owner_id: ownerId,
@@ -80,7 +106,12 @@ export const SupabaseFileService: IFileService = {
         updated_at: new Date().toISOString()
     }).select().single();
 
-    if (error) throw error;
+    if (error) {
+      // Rollback no storage se falhar a inserção no banco
+      await supabase.storage.from(STORAGE_BUCKET).remove([filePath]);
+      throw error;
+    }
+
     return toDomainFile(data);
   },
 
